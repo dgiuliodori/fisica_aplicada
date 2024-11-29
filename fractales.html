@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapas Dinámicos y Conjunto de Mandelbrot</title>
+  <!-- Cargar MathJax para renderizar LaTeX -->
+  <!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
+   <!-- Cargar polyfills desde cdnjs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.1/minified.js"></script>
+  <!-- <script src="js_lib/minified.js"></script> -->
+  <script id="MathJax-script" async
+    src="js_lib/tex-mml-chtml.js">
+  </script>
+  <!-- Cargar Plotly -->
+  <script src="js_lib/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    /* Barra lateral */
+    .sidebar {
+      width: 250px;
+      background-color: #343a40;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .sidebar h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .sidebar select, .sidebar input, .sidebar button {
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .sidebar label {
+      margin-bottom: 5px;
+      font-size: 16px;
+    }
+    .sidebar button {
+      background-color: #28a745;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .sidebar button:hover {
+      background-color: #218838;
+    }
+    .sidebar .nav {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 20px;
+    }
+    .sidebar .nav a {
+      color: #fff;
+      text-decoration: none;
+      padding: 10px;
+      margin-bottom: 5px;
+      background-color: #495057;
+      text-align: center;
+      border-radius: 4px;
+    }
+    .sidebar .nav a.active {
+      background-color: #6c757d;
+    }
+    /* Contenido principal */
+    .main-content {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: auto;
+      background-color: #f8f9fa;
+    }
+    .container {
+      display: none;
+      flex-grow: 1;
+      padding: 20px;
+      box-sizing: border-box;
+      overflow: auto;
+    }
+    .container.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    #equation, #equationBif, #equationMandelbrot {
+      text-align: center;
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 20px;
+      max-width: 800px;
+      width: 100%;
+    }
+    /* Estilos para los gráficos de Plotly */
+    .plotly-graph-div {
+      width: 100%;
+      max-width: 800px;
+      height: 1000px;
+      margin-bottom: 20px;
+    }
+    /* Ajuste del contenedor de la ecuación */
+    .equation-container {
+      max-width: 800px;
+      width: 100%;
+      margin-bottom: 20px;
+      text-align: justify;
+    }
+    .equation-container p {
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+
+
+  </style>
+</head>
+<body>
+  <!-- Barra lateral -->
+  <div class="sidebar">
+    <h1>Configuración</h1>
+    <div class="nav">
+      <a href="#" class="active" onclick="openTab(event, 'tentMap')">Mapa Interactivo</a>
+      <a href="#" onclick="openTab(event, 'bifurcation')">Diagrama de Bifurcación</a>
+      <a href="#" onclick="openTab(event, 'mandelbrot')">Conjunto de Mandelbrot</a>
+    </div>
+    <div id="controls">
+      <!-- Los controles se cargarán dinámicamente -->
+    </div>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="main-content">
+    <!-- Contenido del Mapa Interactivo -->
+    <div id="tentMap" class="container active">
+      <h2>Mapa Interactivo</h2>
+      <div class="equation-container">
+        <p>
+          El <strong>Mapa Interactivo</strong> te permite explorar el comportamiento iterativo de dos sistemas dinámicos: el <em>Mapa de Carpa</em> y el <em>Mapa Logístico</em>. Estos mapas son funciones recurrentes que, dependiendo del parámetro \( r \) y las condiciones iniciales, pueden mostrar una variedad de comportamientos, incluyendo estabilidad, periodicidad y caos.
+        </p>
+        <p>
+          <strong>Mapa de Carpa:</strong> Es un tipo de mapa tentacular que divide el intervalo [0,1] en dos partes. Para valores de \( x \) menores que 0.5, la función se comporta linealmente aumentando con la pendiente \( r \). Para valores de \( x \) mayores o iguales a 0.5, la función decrece linealmente. Este mapa es útil para estudiar transiciones entre comportamientos ordenados y caóticos.
+        </p>
+        <p>
+          <strong>Mapa Logístico:</strong> Es un modelo matemático clásico que describe el crecimiento poblacional con limitaciones. La ecuación del mapa logístico es \( f(x) = r x (1 - x) \), donde \( x \) representa la población actual normalizada entre 0 y 1, y \( r \) es la tasa de crecimiento. Este mapa exhibe una rica dinámica, incluyendo puntos fijos, ciclos periódicos y caos cuando \( r \) supera ciertos umbrales.
+        </p>
+        <p>
+          Cómo se Construye el Cobweb Plot:
+	1.	Desde  x_n , traza una línea vertical hasta la curva  f(x)  para encontrar  f(x_n) .
+	2.	Desde  f(x_n) , traza una línea horizontal hasta la línea de identidad  y = x  para determinar  x_{n+1} .
+	3.	Repetir este proceso para visualizar las iteraciones subsecuentes.
+        </p>
+        <div id="equation">
+          <!-- La ecuación se actualizará dinámicamente según el mapa seleccionado -->
+        </div>
+      </div>
+      <div id="tentMapPlot" class="plotly-graph-div"></div>
+    </div>
+
+    <!-- Contenido del Diagrama de Bifurcación -->
+    <div id="bifurcation" class="container">
+      <h2>Diagrama de Bifurcación</h2>
+      <div class="equation-container">
+        <p>
+          El <strong>Diagrama de Bifurcación</strong> es una herramienta visual que representa cómo los puntos fijos y los ciclos periódicos de un sistema dinámico cambian en función de un parámetro de control, en este caso, \( r \). Este diagrama es esencial para comprender cómo pequeñas variaciones en \( r \) pueden desencadenar transiciones de comportamientos estables a caóticos.
+        </p>
+        <p>
+          Al generar el diagrama de bifurcación para los mapas de Carpa y Logístico, se observa cómo, a medida que \( r \) aumenta, el sistema puede bifurcarse en múltiples puntos fijos o ciclos, y eventualmente exhibir comportamiento caótico. Este fenómeno, conocido como bifurcación de periodos, ilustra la sensibilidad a las condiciones iniciales y la complejidad emergente de sistemas aparentemente simples.
+        </p>
+        <div id="equationBif">
+          <!-- La ecuación se actualizará dinámicamente según el mapa seleccionado -->
+        </div>
+      </div>
+      <div id="bifurcationPlot" class="plotly-graph-div"></div>
+    </div>
+
+    <!-- Contenido del Conjunto de Mandelbrot -->
+    <div id="mandelbrot" class="container">
+      <h2>Fractales Complejos</h2>
+      <div class="equation-container">
+        <p>
+          En esta sección, puedes explorar tanto el <strong>Conjunto de Mandelbrot</strong> como los diferentes <strong>Conjuntos de Julia</strong>. Ambos fractales se generan mediante iteraciones de funciones complejas y exhiben estructuras infinitamente detalladas y auto-similares.
+        </p>
+        <p>
+          El <strong>Conjunto de Mandelbrot</strong> se define iterando la función \( z_{n+1} = z_n^p + c \) comenzando desde \( z_0 = 0 \) y variando \( c \) sobre el plano complejo. Los puntos \( c \) para los cuales la secuencia permanece acotada forman el conjunto.
+        </p>
+        <p>
+          Los <strong>Conjuntos de Julia</strong> se generan fijando un valor de \( c \) y variando \( z_0 \) sobre el plano complejo. Dependiendo del valor de \( c \), los conjuntos de Julia pueden ser conectados o totalmente desconectados, mostrando una variedad de formas fractales.
+        </p>
+        <div id="equationMandelbrot">
+          <!-- La ecuación se actualizará dinámicamente -->
+        </div>
+      </div>
+      <div id="mandelbrotPlot" class="plotly-graph-div"></div>
+    </div>
+  </div>
+
+  <script>
+    // Cargar MathJax después de que el contenido esté listo
+    window.onload = function() {
+      MathJax.typeset();
+      updateEquation();
+      updateEquationBif();
+      loadControls();
+      updateEquationMandelbrot();
+    };
+
+    // Función para cambiar entre pestañas
+    function openTab(evt, tabName) {
+      var i, tabcontent, tablinks;
+
+      // Ocultar todo el contenido
+      tabcontent = document.getElementsByClassName("container");
+      for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].classList.remove("active");
+      }
+
+      // Eliminar la clase 'active' de todos los enlaces
+      tablinks = document.querySelectorAll(".nav a");
+      for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].classList.remove("active");
+      }
+
+      // Mostrar la pestaña actual y añadir 'active' al enlace
+      document.getElementById(tabName).classList.add("active");
+      evt.currentTarget.classList.add("active");
+
+      // Cargar controles correspondientes
+      loadControls();
+
+      // Renderizar ecuaciones LaTeX nuevamente
+      MathJax.typeset();
+
+      // Actualizar ecuación de Mandelbrot/Julia si es necesario
+      if (tabName === 'mandelbrot') {
+        updateEquationMandelbrot();
+      }
+    }
+
+    // Función para cargar los controles en la barra lateral según la pestaña activa
+    function loadControls() {
+      const controlsDiv = document.getElementById('controls');
+      controlsDiv.innerHTML = ''; // Limpiar controles
+
+      if (document.getElementById('tentMap').classList.contains('active')) {
+        controlsDiv.innerHTML = `
+          <label for="mapType">Tipo de Mapa:</label>
+          <select id="mapType" onchange="updateEquation()">
+            <option value="tent">Mapa de Carpa</option>
+            <option value="logistic">Mapa Logístico</option>
+          </select>
+          <label for="r">Parámetro r:</label>
+          <input type="number" id="r" value="1.8" step="0.1" min="0" max="2">
+          <label for="x0">Punto de Inicio x₀:</label>
+          <input type="number" id="x0" value="0.75" step="0.01" min="0" max="1">
+          <label for="iterations">Iteraciones:</label>
+          <input type="number" id="iterations" value="50" step="1" min="1">
+          <label for="speed">Velocidad (ms):</label>
+          <input type="range" id="speed" min="50" max="1000" value="300" step="50" oninput="updateSpeedValue(this.value)">
+          <span id="speedValue">300 ms</span>
+          <button onclick="startSimulation()">Iniciar Simulación</button>
+        `;
+      } else if (document.getElementById('bifurcation').classList.contains('active')) {
+        controlsDiv.innerHTML = `
+          <label for="mapTypeBif">Tipo de Mapa:</label>
+          <select id="mapTypeBif" onchange="updateEquationBif()">
+            <option value="tent">Mapa de Carpa</option>
+            <option value="logistic">Mapa Logístico</option>
+          </select>
+          <label for="rMin">r Mínimo:</label>
+          <input type="number" id="rMin" value="0" step="0.01" min="0" max="2">
+          <label for="rMax">r Máximo:</label>
+          <input type="number" id="rMax" value="2" step="0.01" min="0" max="2">
+          <label for="bifIterations">Iteraciones:</label>
+          <input type="number" id="bifIterations" value="1000" step="100" min="100">
+          <label for="skip">Descartar Primeras:</label>
+          <input type="number" id="skip" value="500" step="100" min="0">
+          <button onclick="drawBifurcationDiagram()">Generar Diagrama</button>
+        `;
+      } else if (document.getElementById('mandelbrot').classList.contains('active')) {
+        // Controles para Mandelbrot y Julia
+        controlsDiv.innerHTML = `
+          <label for="setType">Tipo de Conjunto:</label>
+          <select id="setType" onchange="updateEquationMandelbrot()">
+            <option value="mandelbrot">Conjunto de Mandelbrot</option>
+            <option value="julia">Conjunto de Julia</option>
+          </select>
+          <div id="cParameters" style="display: none;">
+            <label for="cReal">Parte Real de c:</label>
+            <input type="number" id="cReal" value="-0.8" step="0.01" min="-2" max="2">
+            <label for="cImag">Parte Imaginaria de c:</label>
+            <input type="number" id="cImag" value="0.156" step="0.01" min="-2" max="2">
+          </div>
+          <label for="mandelbrotExponent">Exponente p:</label>
+          <input type="number" id="mandelbrotExponent" value="2" step="1" min="2" max="5" onchange="updateEquationMandelbrot()">
+          <label for="mandelbrotIterations">Iteraciones Máximas:</label>
+          <input type="number" id="mandelbrotIterations" value="100" step="10" min="10">
+          <label for="mandelbrotResolution">Resolución:</label>
+          <input type="number" id="mandelbrotResolution" value="500" step="100" min="100">
+          <button onclick="drawFractal()">Generar Conjunto</button>
+        `;
+        updateEquationMandelbrot(); // Actualizamos la ecuación al cargar los controles
+      }
+    }
+
+    function updateEquationMandelbrot() {
+      const exponent = document.getElementById('mandelbrotExponent').value;
+      const setType = document.getElementById('setType').value;
+      const equationDiv = document.getElementById('equationMandelbrot');
+      if (setType === 'mandelbrot') {
+        equationDiv.innerHTML = `$$ z_{n+1} = z_n^{${exponent}} + c $$`;
+        document.getElementById('cParameters').style.display = 'none';
+      } else {
+        const cReal = document.getElementById('cReal').value;
+        const cImag = document.getElementById('cImag').value;
+        equationDiv.innerHTML = `$$ z_{n+1} = z_n^{${exponent}} + (${cReal} ${cImag >= 0 ? '+' : ''} ${cImag}i) $$`;
+        document.getElementById('cParameters').style.display = 'block';
+      }
+      MathJax.typeset();
+    }
+
+    function updateSpeedValue(value) {
+      document.getElementById('speedValue').textContent = `${value} ms`;
+    }
+
+    // Función para actualizar la ecuación en LaTeX según el mapa seleccionado
+    function updateEquation() {
+      const mapType = document.getElementById('mapType').value;
+      const equationDiv = document.getElementById('equation');
+      if (mapType === 'tent') {
+        equationDiv.innerHTML = `$$ f(x) = \\begin{cases} r x & \\text{si } 0 \\leq x < 0.5 \\\\ r (1 - x) & \\text{si } 0.5 \\leq x \\leq 1 \\end{cases} $$`;
+        document.getElementById('r').max = 2;
+      } else if (mapType === 'logistic') {
+        equationDiv.innerHTML = `$$ f(x) = r x (1 - x) $$`;
+        document.getElementById('r').max = 4;
+      }
+      MathJax.typeset();
+    }
+
+    function updateEquationBif() {
+      const mapType = document.getElementById('mapTypeBif').value;
+      const equationDiv = document.getElementById('equationBif');
+      if (mapType === 'tent') {
+        equationDiv.innerHTML = `$$ f(x) = \\begin{cases} r x & \\text{si } 0 \\leq x < 0.5 \\\\ r (1 - x) & \\text{si } 0.5 \\leq x \\leq 1 \\end{cases} $$`;
+        document.getElementById('rMin').max = 2;
+        document.getElementById('rMax').max = 2;
+        document.getElementById('rMin').value = Math.min(document.getElementById('rMin').value, 2);
+        document.getElementById('rMax').value = Math.min(document.getElementById('rMax').value, 2);
+      } else if (mapType === 'logistic') {
+        equationDiv.innerHTML = `$$ f(x) = r x (1 - x) $$`;
+        document.getElementById('rMin').max = 4;
+        document.getElementById('rMax').max = 4;
+        document.getElementById('rMin').value = Math.min(document.getElementById('rMin').value, 4);
+        document.getElementById('rMax').value = Math.min(document.getElementById('rMax').value, 4);
+      }
+      MathJax.typeset();
+    }
+
+    // Variables globales para el Mapa Interactivo
+    let xValues = [];
+    let yValues = [];
+    let currentIteration = 0;
+    let totalIterations = 50;
+    let speed = 300;
+    let x = 0.5;
+    let r = 1.8;
+    let animationInterval;
+
+    // Función del Mapa
+    function mapFunction(x, r) {
+      const mapType = document.getElementById('mapType').value;
+      if (mapType === 'tent') {
+        return x < 0.5 ? r * x : r * (1 - x);
+      } else if (mapType === 'logistic') {
+        return r * x * (1 - x);
+      }
+    }
+
+    // Iniciar la Simulación
+    function startSimulation() {
+      r = parseFloat(document.getElementById('r').value);
+      totalIterations = parseInt(document.getElementById('iterations').value);
+      speed = parseInt(document.getElementById('speed').value);
+      x = parseFloat(document.getElementById('x0').value); // Punto inicial
+
+      // Validaciones
+      if (x < 0 || x > 1) {
+        alert("El punto de inicio x₀ debe estar entre 0 y 1.");
+        return;
+      }
+
+      const mapType = document.getElementById('mapType').value;
+      if (mapType === 'tent' && (r < 0 || r > 2)) {
+        alert("El valor de r debe estar entre 0 y 2 para el mapa de carpa.");
+        return;
+      } else if (mapType === 'logistic' && (r < 0 || r > 4)) {
+        alert("El valor de r debe estar entre 0 y 4 para el mapa logístico.");
+        return;
+      }
+
+      // Inicializar valores
+      xValues = [x];
+      yValues = [x];
+      currentIteration = 0;
+
+      // Dibujar la función y la línea y = x
+      drawFunctionPlot();
+
+      // Iniciar la animación
+      if (animationInterval) {
+        clearInterval(animationInterval);
+      }
+      animationInterval = setInterval(updatePlot, speed);
+    }
+
+    // Dibujar la función y la línea y = x
+    function drawFunctionPlot() {
+      const xFunc = [];
+      const yFunc = [];
+      for (let i = 0; i <= 1; i += 0.001) {
+        xFunc.push(i);
+        yFunc.push(mapFunction(i, r));
+      }
+
+      const traceFunc = {
+        x: xFunc,
+        y: yFunc,
+        mode: 'lines',
+        name: 'f(x)',
+        line: { color: '#007BFF' }
+      };
+
+      const traceLine = {
+        x: [0, 1],
+        y: [0, 1],
+        mode: 'lines',
+        name: 'y = x',
+        line: { dash: 'dash', color: '#ff5733' }
+      };
+
+      // Agregar una tercera traza vacía para el cobweb plot
+      const traceCobweb = {
+        x: [],
+        y: [],
+        mode: 'lines',
+        name: 'Cobweb Plot',
+        line: { color: '#dc3545' }
+      };
+
+         // Nueva trazada para el punto actual
+      const traceCurrent = {
+        x: [],
+        y: [],
+        mode: 'markers',
+        name: 'Punto Actual',
+        marker: { color: 'green', size: 14, symbol: 'circle' } // Estilo distintivo
+      };
+
+      const layout = {
+        xaxis: { title: 'x', range: [0, 1] },
+        yaxis: { title: 'f(x)', range: [0, 1] },
+        width: 600,   // Ajusta según tus necesidades
+        height: 600,    // Ajusta según tus necesidades
+        showlegend: false
+      };
+
+      // Crear el gráfico con las tres trazas
+      Plotly.newPlot('tentMapPlot', [traceFunc, traceLine, traceCobweb, traceCurrent], layout);
+    }
+
+    // Actualizar el Cobweb Plot
+    function updatePlot() {
+      if (currentIteration >= totalIterations) {
+        clearInterval(animationInterval);
+        return;
+      }
+
+      const y = mapFunction(x, r);
+      xValues.push(x);
+      yValues.push(y);
+
+      // Datos para el diagrama de telaraña (cobweb plot)
+      const cobwebX = [];
+      const cobwebY = [];
+
+      if (xValues.length >= 2) {
+        cobwebX.push(xValues[xValues.length - 2], xValues[xValues.length - 1]);
+        cobwebY.push(yValues[yValues.length - 2], yValues[yValues.length - 2]);
+        cobwebX.push(xValues[xValues.length - 1], xValues[xValues.length - 1]);
+        cobwebY.push(yValues[yValues.length - 2], yValues[yValues.length - 1]);
+      }
+
+      // Actualizar la tercera traza (Cobweb Plot)
+      Plotly.extendTraces('tentMapPlot', {
+        x: [cobwebX],
+        y: [cobwebY]
+      }, [2]); // Índice 2 para la tercera traza
+
+      // Actualizar la cuarta traza (Punto Actual)
+      Plotly.restyle('tentMapPlot', {
+        x: [[x]],
+        y: [[y]]
+      }, [3]); // Índice 3 para la cuarta trazada
+
+      currentIteration++;
+      x = y;
+    }
+
+    // Funciones para el Diagrama de Bifurcación con Plotly
+    function drawBifurcationDiagram() {
+      const mapType = document.getElementById('mapTypeBif').value;
+      const mapFunc = function(x, r) {
+        if (mapType === 'tent') {
+          return x < 0.5 ? r * x : r * (1 - x);
+        } else if (mapType === 'logistic') {
+          return r * x * (1 - x);
+        }
+      };
+
+      // Obtener valores de los parámetros
+      const rMin = parseFloat(document.getElementById('rMin').value);
+      const rMax = parseFloat(document.getElementById('rMax').value);
+      const iterations = parseInt(document.getElementById('bifIterations').value);
+      const skip = parseInt(document.getElementById('skip').value);
+
+      // Validar parámetros
+      if (mapType === 'tent') {
+        if (rMin < 0 || rMax > 2 || rMin >= rMax) {
+          alert("Asegúrese de que 0 ≤ rMin < rMax ≤ 2 para el mapa de carpa.");
+          return;
+        }
+      } else if (mapType === 'logistic') {
+        if (rMin < 0 || rMax > 4 || rMin >= rMax) {
+          alert("Asegúrese de que 0 ≤ rMin < rMax ≤ 4 para el mapa logístico.");
+          return;
+        }
+      }
+
+      // Datos para el diagrama
+      const rValues = [];
+      const xValuesBif = [];
+
+      const rSteps = 1000;
+      const rStep = (rMax - rMin) / rSteps;
+
+      for (let i = 0; i <= rSteps; i++) {
+        const r = rMin + i * rStep;
+        let x = Math.random();
+
+        // Iterar para alcanzar el comportamiento asintótico
+        for (let j = 0; j < iterations; j++) {
+          x = mapFunc(x, r);
+
+          // Saltar las primeras iteraciones
+          if (j >= skip) {
+            rValues.push(r);
+            xValuesBif.push(x);
+          }
+        }
+      }
+
+      const trace = {
+        x: rValues,
+        y: xValuesBif,
+        mode: 'markers',
+        marker: { color: 'black', size: 1 },
+        type: 'scattergl'
+      };
+
+      // const layout = {
+      //   xaxis: { title: 'r', range: [rMin, rMax] },
+      //   yaxis: { title: 'x', range: [0, 1] },
+      //   showlegend: false
+      // };
+      const layout = {
+        xaxis: { title: 'r', range: [rMin, rMax] },
+        yaxis: { title: 'x', range: [0, 1] },
+        showlegend: false,
+        width: 800,   // Ajusta según tus necesidades
+        height: 800    // Ajusta según tus necesidades
+      };
+      Plotly.newPlot('bifurcationPlot', [trace], layout);
+    }
+
+    // Funciones para el Conjunto de Mandelbrot con Plotly
+    function drawFractal() {
+      const setType = document.getElementById('setType').value;
+      if (setType === 'mandelbrot') {
+        drawMandelbrotSet();
+      } else {
+        drawJuliaSet();
+      }
+    }
+
+    // Función para dibujar el Conjunto de Mandelbrot
+    function drawMandelbrotSet() {
+      const maxIterations = parseInt(document.getElementById('mandelbrotIterations').value);
+      const resolution = parseInt(document.getElementById('mandelbrotResolution').value);
+      const exponent = parseInt(document.getElementById('mandelbrotExponent').value);
+
+      // Rango del plano complejo
+      const xmin = -2.5;
+      const xmax = 1;
+      const ymin = -1.5;
+      const ymax = 1.5;
+
+      const xValues = [];
+      const yValues = [];
+      const zValues = [];
+
+      const xStep = (xmax - xmin) / (resolution - 1);
+      const yStep = (ymax - ymin) / (resolution - 1);
+
+      for (let i = 0; i < resolution; i++) {
+        xValues.push(xmin + i * xStep);
+      }
+      for (let j = 0; j < resolution; j++) {
+        yValues.push(ymin + j * yStep);
+      }
+
+      for (let j = 0; j < resolution; j++) {
+        const row = [];
+        for (let i = 0; i < resolution; i++) {
+          let x = 0;
+          let y = 0;
+          let iteration = 0;
+          const cReal = xValues[i];
+          const cImag = yValues[j];
+
+          while (x * x + y * y <= 4 && iteration < maxIterations) {
+            // Calcular z^p
+            const x_temp = x;
+            const y_temp = y;
+
+            // Convertir a coordenadas polares
+            const r = Math.sqrt(x_temp * x_temp + y_temp * y_temp);
+            const theta = Math.atan2(y_temp, x_temp);
+
+            // Elevar al exponente
+            const r_new = Math.pow(r, exponent);
+            const theta_new = exponent * theta;
+
+            // Convertir de nuevo a coordenadas cartesianas y aplicar c
+            x = r_new * Math.cos(theta_new) + cReal;
+            y = r_new * Math.sin(theta_new) + cImag;
+
+            iteration++;
+          }
+
+          row.push(iteration);
+        }
+        zValues.push(row);
+      }
+
+      const data = [{
+        z: zValues,
+        x: xValues,
+        y: yValues,
+        type: 'heatmap',
+        colorscale: 'Viridis',
+        showscale: false
+      }];
+
+      const layout = {
+        xaxis: { title: 'Re(c)', range: [xmin, xmax], showgrid: false, zeroline: false },
+        yaxis: { title: 'Im(c)', range: [ymin, ymax], showgrid: false, zeroline: false },
+        width: 600,
+        height: 600,
+        margin: { t: 50, b: 50, l: 50, r: 50 }
+      };
+
+      Plotly.newPlot('mandelbrotPlot', data, layout);
+    }
+
+    // Función para dibujar el Conjunto de Julia
+    function drawJuliaSet() {
+      const maxIterations = parseInt(document.getElementById('mandelbrotIterations').value);
+      const resolution = parseInt(document.getElementById('mandelbrotResolution').value);
+      const exponent = parseInt(document.getElementById('mandelbrotExponent').value);
+      const cReal = parseFloat(document.getElementById('cReal').value);
+      const cImag = parseFloat(document.getElementById('cImag').value);
+
+      // Rango del plano complejo
+      const xmin = -2;
+      const xmax = 2;
+      const ymin = -2;
+      const ymax = 2;
+
+      const xValues = [];
+      const yValues = [];
+      const zValues = [];
+
+      const xStep = (xmax - xmin) / (resolution - 1);
+      const yStep = (ymax - ymin) / (resolution - 1);
+
+      for (let i = 0; i < resolution; i++) {
+        xValues.push(xmin + i * xStep);
+      }
+      for (let j = 0; j < resolution; j++) {
+        yValues.push(ymin + j * yStep);
+      }
+
+      for (let j = 0; j < resolution; j++) {
+        const row = [];
+        for (let i = 0; i < resolution; i++) {
+          let x = xValues[i];
+          let y = yValues[j];
+          let iteration = 0;
+
+          while (x * x + y * y <= 4 && iteration < maxIterations) {
+            // Calcular z^p
+            const x_temp = x;
+            const y_temp = y;
+
+            // Convertir a coordenadas polares
+            const r = Math.sqrt(x_temp * x_temp + y_temp * y_temp);
+            const theta = Math.atan2(y_temp, x_temp);
+
+            // Elevar al exponente
+            const r_new = Math.pow(r, exponent);
+            const theta_new = exponent * theta;
+
+            // Convertir de nuevo a coordenadas cartesianas y aplicar c
+            x = r_new * Math.cos(theta_new) + cReal;
+            y = r_new * Math.sin(theta_new) + cImag;
+
+            iteration++;
+          }
+
+          row.push(iteration);
+        }
+        zValues.push(row);
+      }
+
+      const data = [{
+        z: zValues,
+        x: xValues,
+        y: yValues,
+        type: 'heatmap',
+        colorscale: 'Viridis',
+        showscale: false
+      }];
+
+      const layout = {
+        xaxis: { title: 'Re(z₀)', range: [xmin, xmax], showgrid: false, zeroline: false },
+        yaxis: { title: 'Im(z₀)', range: [ymin, ymax], showgrid: false, zeroline: false },
+        width: 600,
+        height: 600,
+        margin: { t: 50, b: 50, l: 50, r: 50 }
+      };
+
+      Plotly.newPlot('mandelbrotPlot', data, layout);
+    }
+  </script>
+</body>
+</html>

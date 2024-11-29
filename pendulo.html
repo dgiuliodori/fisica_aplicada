@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulación de Péndulo Simple con Energías (RK4)</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        h1 {
+            margin-top: 20px;
+            color: #2c3e50;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        /* Controls Section */
+        .controls {
+            background: #ffffffcc;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .controls div {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        label {
+            flex: 1;
+            text-align: right;
+            margin-right: 15px;
+            font-weight: bold;
+            color: #34495e;
+        }
+
+        input[type=range] {
+            flex: 3;
+            margin-right: 10px;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            transition: background 0.3s;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        input[type=range]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        input[type=range]:hover {
+            background: #ccc;
+        }
+
+        .controls span {
+            width: 50px;
+            text-align: left;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        /* Buttons */
+        .buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .buttons button {
+            background-color: #3498db;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .buttons button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .buttons button:active {
+            transform: translateY(0);
+        }
+
+        /* Canvas */
+        canvas {
+            border: 2px solid #34495e;
+            border-radius: 10px;
+            background-color: #ecf0f1;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin: 20px;
+        }
+
+        /* Output and Formulas Sections */
+        .output, .formulas {
+            background: #ffffffcc;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            width: 90%;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+
+        .output p, .formulas p {
+            margin: 5px 10px;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+
+        .output span, .formulas span {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        /* Formulas Section */
+        .formulas {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .formulas h2 {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .formulas ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .formulas li {
+            margin: 5px 0;
+            font-size: 16px;
+            color: #34495e;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .controls div {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            label {
+                text-align: left;
+                margin-bottom: 5px;
+            }
+
+            .buttons {
+                flex-direction: column;
+            }
+
+            .buttons button {
+                margin: 5px 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Simulación de Péndulo Simple con Energías (RK4)</h1>
+
+    <div class="controls">
+        <div>
+            <label for="length">Longitud del hilo (m):</label>
+            <input type="range" id="length" min="0.5" max="5" step="0.1" value="2">
+            <span id="lengthVal">2</span> m
+        </div>
+        <div>
+            <label for="mass">Masa del peso (kg):</label>
+            <input type="range" id="mass" min="0.1" max="10" step="0.1" value="1">
+            <span id="massVal">1</span> kg
+        </div>
+        <div>
+            <label for="gravity">Gravedad (m/s²):</label>
+            <input type="range" id="gravity" min="1" max="20" step="0.1" value="9.81">
+            <span id="gravityVal">9.81</span> m/s²
+        </div>
+        <div>
+            <label for="angle">Ángulo inicial (°):</label>
+            <input type="range" id="angle" min="1" max="90" step="1" value="30">
+            <span id="angleVal">30</span>°
+        </div>
+        <div class="buttons">
+            <button id="startBtn">Iniciar</button>
+            <button id="pauseBtn">Pausar</button>
+            <button id="resetBtn">Reiniciar</button>
+            <button id="equilibriumBtn">Posición de Equilibrio</button>
+            <button id="maxHeightBtn">Altura Máxima</button>
+        </div>
+    </div>
+
+    <canvas id="pendulumCanvas" width="600" height="500"></canvas>
+
+    <div class="output">
+        <p>Periodo: <span id="period">--</span> s</p>
+        <p>Altura máxima: <span id="maxHeight">--</span> m</p>
+        <p>Amplitud actual: <span id="currentAngle">--</span>°</p>
+        <p>Velocidad angular: <span id="angularVelocity">--</span> rad/s</p>
+        <p>Velocidad lineal X: <span id="velocityX">--</span> m/s</p>
+        <p>Velocidad lineal Y: <span id="velocityY">--</span> m/s</p>
+        <p>Energía Potencial: <span id="potentialEnergy">--</span> J</p>
+        <p>Energía Cinética: <span id="kineticEnergy">--</span> J</p>
+        <p>Energía Total: <span id="totalEnergy">--</span> J</p>
+        <p>Diferencia de Energía: <span id="energyDifference">--</span> J</p>
+        <p>Energía Cinética Antes de Equilibrio: <span id="keBeforeEquilibrium">--</span> J</p>
+    </div>
+
+    <div class="formulas">
+        <h2>Fórmulas del Péndulo Simple</h2>
+        <ul>
+            <li><strong>Ecuación de Movimiento:</strong> θ'' = -(g / L) * sin(θ)</li>
+            <li><strong>Periodo (T):</strong> T = 2π * √(L / g)</li>
+            <li><strong>Altura Máxima (h):</strong> h = L * (1 - cos(θ₀))</li>
+            <li><strong>Energía Potencial (PE):</strong> PE = m * g * h</li>
+            <li><strong>Energía Cinética (KE):</strong> KE = ½ * m * (L * ω)²</li>
+            <li><strong>Energía Total (TE):</strong> TE = PE + KE</li>
+            <li><strong>Velocidad Lineal X (Vx):</strong> Vx = L * ω * cos(θ)</li>
+            <li><strong>Velocidad Lineal Y (Vy):</strong> Vy = -L * ω * sin(θ)</li>
+        </ul>
+    </div>
+
+    <script>
+        // Referencias a elementos del DOM
+        const canvas = document.getElementById('pendulumCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const lengthSlider = document.getElementById('length');
+        const massSlider = document.getElementById('mass');
+        const gravitySlider = document.getElementById('gravity');
+        const angleSlider = document.getElementById('angle');
+
+        const lengthVal = document.getElementById('lengthVal');
+        const massVal = document.getElementById('massVal');
+        const gravityVal = document.getElementById('gravityVal');
+        const angleVal = document.getElementById('angleVal');
+
+        const periodDisplay = document.getElementById('period');
+        const currentAngleDisplay = document.getElementById('currentAngle');
+        const angularVelocityDisplay = document.getElementById('angularVelocity');
+        const velocityXDisplay = document.getElementById('velocityX');
+        const velocityYDisplay = document.getElementById('velocityY');
+        const maxHeightDisplay = document.getElementById('maxHeight');
+        const potentialEnergyDisplay = document.getElementById('potentialEnergy');
+        const kineticEnergyDisplay = document.getElementById('kineticEnergy');
+        const totalEnergyDisplay = document.getElementById('totalEnergy');
+        const energyDifferenceDisplay = document.getElementById('energyDifference');
+        const keBeforeEquilibriumDisplay = document.getElementById('keBeforeEquilibrium');
+
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const equilibriumBtn = document.getElementById('equilibriumBtn');
+        const maxHeightBtn = document.getElementById('maxHeightBtn');
+
+        // Parámetros del péndulo
+        let length = parseFloat(lengthSlider.value); // Longitud en metros
+        let mass = parseFloat(massSlider.value);     // Masa en kg
+        let gravity = parseFloat(gravitySlider.value); // Gravedad en m/s²
+        let theta0 = parseFloat(angleSlider.value) * Math.PI / 180; // Ángulo inicial en rad
+
+        // Variables de simulación
+        let origin = { x: canvas.width / 2, y: 100 }; // Punto de fijación del péndulo
+        let bob = { x: 0, y: 0 }; // Posición del peso
+        let angularVelocity = 0; // Velocidad angular
+        let angularAcceleration = 0; // Aceleración angular
+        let timeStep = 0.02; // Incremento de tiempo (segundos)
+        let animationId;
+        let isPaused = false;
+
+        // Variables para la física
+        let angle = theta0; // Ángulo actual
+        let maxHeight = 0; // Altura máxima
+        let initialTotalEnergy = 0; // Energía total inicial
+
+        // Calcular altura máxima al inicio y mantenerla constante
+        function calculateMaxHeight() {
+            return length * (1 - Math.cos(theta0));
+        }
+
+        // Función para actualizar los valores mostrados
+        function updateValues() {
+            lengthVal.textContent = length.toFixed(1);
+            massVal.textContent = mass.toFixed(1);
+            gravityVal.textContent = gravity.toFixed(2);
+            angleVal.textContent = (theta0 * 180 / Math.PI).toFixed(1);
+        }
+
+        // Función para calcular la posición del peso
+        function calculateBobPosition(currentTheta) {
+            bob.x = origin.x + length * 100 * Math.sin(currentTheta);
+            bob.y = origin.y + length * 100 * Math.cos(currentTheta);
+        }
+
+        // Función para dibujar los ejes cartesianos
+        function drawAxes() {
+            // Dibujar eje X
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.strokeStyle = '#7f8c8d';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+
+            // Dibujar eje Y
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.strokeStyle = '#7f8c8d';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Función para dibujar los marcadores de altura y medidas
+        function drawMarkers() {
+            // Calcular la posición de la altura máxima
+            const equilibriumY = origin.y + length * 100; // Posición de equilibrio
+            const maxHeightY = equilibriumY - maxHeight * 100;
+
+            // Línea de referencia para la altura máxima
+            ctx.beginPath();
+            ctx.moveTo(50, maxHeightY);
+            ctx.lineTo(canvas.width - 50, maxHeightY);
+            ctx.strokeStyle = '#27ae60';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Etiqueta de altura máxima
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#27ae60';
+            ctx.fillText('Altura Máxima', 60, maxHeightY - 10);
+
+            // Línea de referencia para la posición de equilibrio
+            ctx.beginPath();
+            ctx.moveTo(50, equilibriumY);
+            ctx.lineTo(canvas.width - 50, equilibriumY);
+            ctx.strokeStyle = '#95a5a6';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Etiqueta de posición de equilibrio
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#95a5a6';
+            ctx.fillText('Posición de Equilibrio', 60, equilibriumY + 20);
+        }
+
+        // Función para dibujar el péndulo y los marcadores
+        function drawPendulum(currentTheta) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar ejes cartesianos
+            drawAxes();
+
+            // Dibujar marcadores
+            if (maxHeight > 0) {
+                drawMarkers();
+            }
+
+            // Dibujar hilo
+            ctx.beginPath();
+            ctx.moveTo(origin.x, origin.y);
+            ctx.lineTo(bob.x, bob.y);
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Dibujar peso
+            ctx.beginPath();
+            ctx.arc(bob.x, bob.y, mass * 5, 0, 2 * Math.PI); // Tamaño del peso proporcional a la masa
+            ctx.fillStyle = '#e74c3c';
+            ctx.fill();
+            ctx.strokeStyle = '#c0392b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Dibujar etiqueta de origen
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#34495e';
+            ctx.fillText('Origen', origin.x + 10, origin.y - 10);
+        }
+
+        // Función para calcular las energías y velocidades lineales
+        function calculateEnergies(currentTheta, omega) {
+            // Altura actual desde el punto de equilibrio
+            const h = length * (1 - Math.cos(currentTheta));
+
+            // Energía Potencial (PE = mgh)
+            const potentialEnergy = mass * gravity * h;
+
+            // Velocidad tangencial (v = L * ω)
+            const v = length * omega;
+
+            // Energía Cinética (KE = ½ m v²)
+            const kineticEnergy = 0.5 * mass * v * v;
+
+            // Energía Total (TE = PE + KE)
+            const totalEnergy = potentialEnergy + kineticEnergy;
+
+            // Velocidades lineales en X y Y
+            const velocityX = length * omega * Math.cos(currentTheta);
+            const velocityY = -length * omega * Math.sin(currentTheta);
+
+            return {
+                potentialEnergy,
+                kineticEnergy,
+                totalEnergy,
+                velocityX,
+                velocityY
+            };
+        }
+
+        // Función de Runge-Kutta 4 (RK4) para resolver las ecuaciones diferenciales
+        function rungeKutta4(theta, omega, dt) {
+            // Definir las funciones derivadas
+            const dTheta = (omega) => omega;
+            const dOmega = (theta) => (-gravity / length) * Math.sin(theta);
+
+            // Calcular los k1
+            const k1_theta = dTheta(omega);
+            const k1_omega = dOmega(theta);
+
+            // Calcular los k2
+            const k2_theta = dTheta(omega + 0.5 * dt * k1_omega);
+            const k2_omega = dOmega(theta + 0.5 * dt * k1_theta);
+
+            // Calcular los k3
+            const k3_theta = dTheta(omega + 0.5 * dt * k2_omega);
+            const k3_omega = dOmega(theta + 0.5 * dt * k2_theta);
+
+            // Calcular los k4
+            const k4_theta = dTheta(omega + dt * k3_omega);
+            const k4_omega = dOmega(theta + dt * k3_theta);
+
+            // Actualizar theta y omega
+            const theta_new = theta + (dt / 6) * (k1_theta + 2 * k2_theta + 2 * k3_theta + k4_theta);
+            const omega_new = omega + (dt / 6) * (k1_omega + 2 * k2_omega + 2 * k3_omega + k4_omega);
+
+            return { theta: theta_new, omega: omega_new };
+        }
+
+        // Función para actualizar la física del péndulo usando RK4
+        function updatePhysics() {
+            // Aplicar el método RK4 para obtener el nuevo theta y omega
+            const result = rungeKutta4(angle, angularVelocity, timeStep);
+            angle = result.theta;
+            angularVelocity = result.omega;
+
+            // Actualizar las medidas de salida
+            currentAngleDisplay.textContent = (angle * 180 / Math.PI).toFixed(2);
+            angularVelocityDisplay.textContent = angularVelocity.toFixed(2);
+
+            // Calcular altura máxima una vez
+            if (maxHeight === 0) {
+                maxHeight = calculateMaxHeight();
+                maxHeightDisplay.textContent = maxHeight.toFixed(3);
+            }
+
+            // Calcular el periodo usando la aproximación para ángulos pequeños
+            let period = 2 * Math.PI * Math.sqrt(length / gravity);
+            periodDisplay.textContent = period.toFixed(2);
+
+            // Calcular energías y velocidades lineales
+            const energies = calculateEnergies(angle, angularVelocity);
+            potentialEnergyDisplay.textContent = energies.potentialEnergy.toFixed(2);
+            kineticEnergyDisplay.textContent = energies.kineticEnergy.toFixed(2);
+            totalEnergyDisplay.textContent = energies.totalEnergy.toFixed(2);
+            velocityXDisplay.textContent = energies.velocityX.toFixed(2);
+            velocityYDisplay.textContent = energies.velocityY.toFixed(2);
+
+            // Calcular diferencia de energía respecto a la energía inicial
+            if (initialTotalEnergy === 0) {
+                initialTotalEnergy = energies.totalEnergy;
+            }
+            const energyDifference = energies.totalEnergy - initialTotalEnergy;
+            energyDifferenceDisplay.textContent = energyDifference.toFixed(2);
+        }
+
+        // Función de animación
+        function animate() {
+            if (!isPaused) {
+                updatePhysics();
+                calculateBobPosition(angle);
+                drawPendulum(angle);
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+
+        // Función para iniciar la simulación
+        function startSimulation() {
+            if (isPaused) {
+                isPaused = false;
+                animate();
+            } else if (!animationId) {
+                animate();
+            }
+        }
+
+        // Función para pausar la simulación
+        function pauseSimulation() {
+            isPaused = true;
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+
+        // Función para reiniciar la simulación
+        function resetSimulation() {
+            pauseSimulation();
+            // Reiniciar parámetros
+            length = parseFloat(lengthSlider.value);
+            mass = parseFloat(massSlider.value);
+            gravity = parseFloat(gravitySlider.value);
+            theta0 = parseFloat(angleSlider.value) * Math.PI / 180;
+            angle = theta0;
+            angularVelocity = 0;
+            angularAcceleration = 0;
+            maxHeight = 0;
+            initialTotalEnergy = 0;
+            updateValues();
+            calculateBobPosition(angle);
+            drawPendulum(angle);
+            // Reset displays
+            periodDisplay.textContent = '--';
+            currentAngleDisplay.textContent = '--';
+            angularVelocityDisplay.textContent = '--';
+            velocityXDisplay.textContent = '--';
+            velocityYDisplay.textContent = '--';
+            potentialEnergyDisplay.textContent = '--';
+            kineticEnergyDisplay.textContent = '--';
+            totalEnergyDisplay.textContent = '--';
+            energyDifferenceDisplay.textContent = '--';
+            keBeforeEquilibriumDisplay.textContent = '--';
+            maxHeightDisplay.textContent = '--';
+        }
+
+        // Función para poner el péndulo en la posición de equilibrio y capturar KE antes de detenerlo
+        function setEquilibrium() {
+            if (!isPaused && animationId) {
+                // Capturar KE justo antes de detener
+                const energies = calculateEnergies(angle, angularVelocity);
+                const kineticEnergyBeforeStop = energies.kineticEnergy;
+
+                // Detener la simulación
+                pauseSimulation();
+
+                // Mostrar KE antes de detener en el nuevo campo
+                keBeforeEquilibriumDisplay.textContent = kineticEnergyBeforeStop.toFixed(2);
+
+                // Colocar el péndulo en equilibrio
+                angle = 0;
+                angularVelocity = 0;
+                angularAcceleration = 0;
+                calculateBobPosition(angle);
+                drawPendulum(angle);
+
+                // Reset energías
+                potentialEnergyDisplay.textContent = '0.00';
+                kineticEnergyDisplay.textContent = '0.00';
+                totalEnergyDisplay.textContent = '0.00';
+                energyDifferenceDisplay.textContent = '0.00';
+                currentAngleDisplay.textContent = '0.00';
+                angularVelocityDisplay.textContent = '0.00';
+                velocityXDisplay.textContent = '0.00';
+                velocityYDisplay.textContent = '0.00';
+
+                // Reset altura máxima
+                maxHeight = 0;
+                maxHeightDisplay.textContent = '0.000';
+            } else {
+                // Si la simulación está pausada, simplemente colocar en equilibrio
+                angle = 0;
+                angularVelocity = 0;
+                angularAcceleration = 0;
+                calculateBobPosition(angle);
+                drawPendulum(angle);
+
+                // Reset energías
+                potentialEnergyDisplay.textContent = '0.00';
+                kineticEnergyDisplay.textContent = '0.00';
+                totalEnergyDisplay.textContent = '0.00';
+                energyDifferenceDisplay.textContent = '0.00';
+                currentAngleDisplay.textContent = '0.00';
+                angularVelocityDisplay.textContent = '0.00';
+                velocityXDisplay.textContent = '0.00';
+                velocityYDisplay.textContent = '0.00';
+
+                // Reset altura máxima
+                maxHeight = 0;
+                maxHeightDisplay.textContent = '0.000';
+
+                // Limpiar KE antes de Equilibrio si la simulación estaba pausada
+                keBeforeEquilibriumDisplay.textContent = '--';
+            }
+        }
+
+        // Función para poner el péndulo en la altura máxima
+        function setMaxHeight() {
+            pauseSimulation();
+            angle = theta0;
+            angularVelocity = 0;
+            angularAcceleration = 0;
+            calculateBobPosition(angle);
+            drawPendulum(angle);
+            // Calcular y mostrar energías
+            const energies = calculateEnergies(angle, angularVelocity);
+            potentialEnergyDisplay.textContent = energies.potentialEnergy.toFixed(2);
+            kineticEnergyDisplay.textContent = energies.kineticEnergy.toFixed(2);
+            totalEnergyDisplay.textContent = energies.totalEnergy.toFixed(2);
+            velocityXDisplay.textContent = energies.velocityX.toFixed(2);
+            velocityYDisplay.textContent = energies.velocityY.toFixed(2);
+            energyDifferenceDisplay.textContent = (energies.totalEnergy - initialTotalEnergy).toFixed(2);
+            currentAngleDisplay.textContent = (angle * 180 / Math.PI).toFixed(2);
+            angularVelocityDisplay.textContent = angularVelocity.toFixed(2);
+            // Calcular altura máxima si aún no está calculada
+            if (maxHeight === 0) {
+                maxHeight = calculateMaxHeight();
+                maxHeightDisplay.textContent = maxHeight.toFixed(3);
+            }
+        }
+
+        // Event listeners para los controles
+        lengthSlider.addEventListener('input', function() {
+            length = parseFloat(this.value);
+            updateValues();
+            resetSimulation();
+        });
+
+        massSlider.addEventListener('input', function() {
+            mass = parseFloat(this.value);
+            updateValues();
+            resetSimulation();
+        });
+
+        gravitySlider.addEventListener('input', function() {
+            gravity = parseFloat(this.value);
+            updateValues();
+            resetSimulation();
+        });
+
+        angleSlider.addEventListener('input', function() {
+            theta0 = parseFloat(this.value) * Math.PI / 180;
+            angle = theta0;
+            angularVelocity = 0;
+            angularAcceleration = 0;
+            maxHeight = 0; // Reset para recalcular
+            initialTotalEnergy = 0; // Reset para recalcular
+            updateValues();
+            resetSimulation();
+        });
+
+        // Event listeners para los botones de control
+        startBtn.addEventListener('click', startSimulation);
+        pauseBtn.addEventListener('click', pauseSimulation);
+        resetBtn.addEventListener('click', resetSimulation);
+        equilibriumBtn.addEventListener('click', setEquilibrium);
+        maxHeightBtn.addEventListener('click', setMaxHeight);
+
+        // Inicializar la simulación al cargar la página
+        window.onload = function() {
+            updateValues();
+            maxHeight = calculateMaxHeight();
+            calculateBobPosition(angle);
+            drawPendulum(angle);
+            // Calcular y mostrar energías iniciales
+            const energies = calculateEnergies(angle, angularVelocity);
+            potentialEnergyDisplay.textContent = energies.potentialEnergy.toFixed(2);
+            kineticEnergyDisplay.textContent = energies.kineticEnergy.toFixed(2);
+            totalEnergyDisplay.textContent = energies.totalEnergy.toFixed(2);
+            velocityXDisplay.textContent = energies.velocityX.toFixed(2);
+            velocityYDisplay.textContent = energies.velocityY.toFixed(2);
+            energyDifferenceDisplay.textContent = '0.00';
+            keBeforeEquilibriumDisplay.textContent = '--';
+            maxHeightDisplay.textContent = maxHeight.toFixed(3);
+            initialTotalEnergy = energies.totalEnergy;
+        };
+    </script>
+
+</body>
+</html>

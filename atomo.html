@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Modelo Interactivo del Átomo con Spin, Principio de Exclusión de Pauli y Etiquetas Mejoradas</title>
+    <style>
+        /* Estilos Generales */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden; /* Evita barras de desplazamiento por animaciones */
+        }
+
+        /* Barra Lateral Izquierda */
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .sidebar label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        .sidebar input, .sidebar select, .sidebar button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .sidebar button {
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .sidebar button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Área del Canvas */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+        }
+
+        canvas {
+            background-color: #ecf0f1;
+            display: block;
+            margin: auto;
+            border: 1px solid #bdc3c7;
+        }
+
+        /* Contenedor para Fotones */
+        #photonContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        /* Estilos para Fotones */
+        .photon {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            opacity: 1;
+            pointer-events: none;
+            transition: transform 1s, opacity 1s;
+            box-shadow: 0 0 10px 2px rgba(255, 255, 0, 0.8);
+        }
+
+        /* Mensajes Informativos */
+        #electronInfo {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ecf0f1;
+            text-align: center;
+            min-height: 20px;
+        }
+
+        /* Efecto de Resplandor en el Electrón */
+        .glow {
+            animation: glowEffect 1s forwards;
+        }
+
+        @keyframes glowEffect {
+            from {
+                box-shadow: 0 0 5px 2px rgba(255, 255, 255, 0.5);
+            }
+            to {
+                box-shadow: 0 0 20px 5px rgba(255, 255, 255, 1);
+            }
+        }
+
+        /* Estilos para Flechas de Spin */
+        .spin-arrow {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            /* Centrar la flecha */
+            transform: translate(-50%, -50%);
+        }
+
+        .spin-arrow.up::after {
+            content: '↑';
+            font-size: 16px;
+            color: green;
+        }
+
+        .spin-arrow.down::after {
+            content: '↓';
+            font-size: 16px;
+            color: red;
+        }
+
+        /* Estilos para Etiquetas de Órbitas y Sub-órbitas */
+        .orbit-label, .electron-label {
+            position: absolute;
+            pointer-events: none;
+            font-size: 14px;
+            font-weight: bold;
+            color: #34495e;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        .suborbit-label {
+            position: absolute;
+            pointer-events: none;
+            font-size: 12px;
+            color: #7f8c8d;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 1px 3px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Barra Lateral Izquierda -->
+    <div class="sidebar">
+        <h2>Controles del Átomo</h2>
+        <div>
+            <label for="protons">Protones:</label>
+            <input type="number" id="protons" value="1" min="1">
+        </div>
+        <div>
+            <label for="neutrons">Neutrones:</label>
+            <input type="number" id="neutrons" value="0" min="0">
+        </div>
+        <div>
+            <label for="electrons">Electrones:</label>
+            <input type="number" id="electrons" value="1" min="0">
+        </div>
+        <button id="generateButton">Generar Átomo</button>
+
+        <hr style="border: 1px solid #7f8c8d;">
+
+        <div>
+            <label for="electronSelect">Seleccionar Electrón:</label>
+            <select id="electronSelect">
+                <option value="" disabled selected>Elige</option>
+            </select>
+        </div>
+        <div>
+            <label for="newOrbit">Nueva Órbita:</label>
+            <select id="newOrbit">
+                <option value="" disabled selected>Elige</option>
+            </select>
+        </div>
+        <button id="changeOrbitButton">Cambiar Órbita</button>
+
+        <div>
+            <label for="spinToggle">
+                <input type="checkbox" id="spinToggle">
+                Incorporar Spin
+            </label>
+        </div>
+
+        <div id="electronInfo"></div>
+    </div>
+
+    <!-- Área del Canvas -->
+    <div class="canvas-container">
+        <canvas id="atomCanvas" width="800" height="800"></canvas>
+        <div id="photonContainer"></div>
+    </div>
+
+    <script>
+        // Obtener elementos del DOM
+        const canvas = document.getElementById('atomCanvas');
+        const ctx = canvas.getContext('2d');
+        const photonContainer = document.getElementById('photonContainer');
+        const electronInfoDiv = document.getElementById('electronInfo');
+        const spinToggle = document.getElementById('spinToggle');
+
+        // Variables Principales
+        let protons = 1;
+        let neutrons = 0;
+        let electronsCount = 1;
+        let orbitals = []; // Estructura: [{ shellNumber, maxElectrons, subOrbitals: [ [electron1, electron2], ... ] }, ...]
+        let electronsData = []; // Información detallada de cada electrón
+        let incorporateSpin = false; // Estado del spin
+
+        // Configuración para el tamaño de las órbitas
+        const baseOrbitRadius = 60;  // Radio base para la primera órbita
+        const orbitIncrement = 60;   // Incremento de radio por cada órbita
+
+        // Mapeo de Shells a Nombres
+        const shellLabels = {
+            1: 'K',
+            2: 'L',
+            3: 'M',
+            4: 'N',
+            5: 'O',
+            6: 'P',
+            7: 'Q'
+        };
+
+        // Mapeo de Sub-órbitas a Nombres
+        const subOrbitLabels = ['s', 'p', 'd', 'f', 'g', 'h', 'i', 'j', 'k'];
+
+        // Clase para manejar cada electrón
+        class Electron {
+            constructor(orbit, subOrbit, angle, spin) {
+                this.currentOrbit = orbit;      // Número de la órbita (shell)
+                this.subOrbit = subOrbit;      // Número de la sub-órbita dentro de la órbita
+                this.angle = angle;            // En radianes
+                this.orbitRadius = getOrbitRadius(orbit);
+                this.speed = 0.02;             // Velocidad de rotación
+                this.transitioning = false;    // Indica si está en transición
+                this.transitionProgress = 0;   // Progreso de la transición (0 a 1)
+                this.transitionDuration = 60;  // Frames de transición (~1 segundo a 60 FPS)
+                this.orbitStartRadius = this.orbitRadius;
+                this.orbitEndRadius = this.orbitRadius;
+                this.isEmitting = false;       // Indica si está emitiendo energía
+                this.isAbsorbing = false;      // Indica si está absorbiendo energía
+                this.spin = spin;              // 'up' o 'down'
+                this.electronNumber = electronsData.length + 1; // Número del electrón
+            }
+
+            update() {
+                // Actualizar posición angular
+                this.angle += this.speed;
+
+                // Manejar transición de órbita
+                if (this.transitioning) {
+                    this.transitionProgress++;
+                    const progress = this.transitionProgress / this.transitionDuration;
+                    if (progress >= 1) {
+                        this.transitioning = false;
+                        this.currentOrbit = this.targetOrbit;
+                        this.orbitRadius = this.targetOrbitRadius;
+                        this.subOrbit = this.targetSubOrbit;
+                        // Finalizar efectos
+                        if (this.isEmitting || this.isAbsorbing) {
+                            this.isEmitting = false;
+                            this.isAbsorbing = false;
+                        }
+                    } else {
+                        // Interpolar el radio de la órbita
+                        this.orbitRadius = this.orbitStartRadius + (this.orbitEndRadius - this.orbitStartRadius) * progress;
+                    }
+                }
+            }
+
+            draw() {
+                const x = canvas.width / 2 + this.orbitRadius * Math.cos(this.angle);
+                const y = canvas.height / 2 + this.orbitRadius * Math.sin(this.angle);
+
+                // Dibujar el electrón
+                ctx.beginPath();
+                ctx.arc(x, y, 10, 0, 2 * Math.PI, false);
+                ctx.fillStyle = 'blue';
+                ctx.fill();
+                ctx.stroke();
+
+                // Dibujar la etiqueta del electrón
+                ctx.font = "12px Arial";
+                ctx.fillStyle = 'black';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`e${this.electronNumber}`, x, y + 20);
+
+                // Dibujar la etiqueta de la sub-órbita con desplazamiento para evitar superposición
+                const subOrbitLabel = `${this.currentOrbit}${subOrbitLabels[this.subOrbit - 1]}`;
+                ctx.font = "10px Arial";
+                ctx.fillStyle = 'black';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(subOrbitLabel, x, y - 25);
+
+                // Efecto de resplandor si está en transición
+                if (this.transitioning) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 15, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = this.isEmitting ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 0, 255, 0.5)';
+                    ctx.fill();
+                }
+
+                // Dibujar el spin si está habilitado
+                if (incorporateSpin) {
+                    drawSpin(x, y, this.spin);
+                }
+            }
+
+            changeOrbit(newOrbit, newSubOrbit, newSpin) {
+                if (newOrbit === this.currentOrbit && newSubOrbit === this.subOrbit) return;
+
+                this.targetOrbit = newOrbit;
+                this.targetSubOrbit = newSubOrbit;
+                this.targetOrbitRadius = getOrbitRadius(newOrbit);
+                this.orbitStartRadius = this.orbitRadius;
+                this.transitioning = true;
+                this.transitionProgress = 0;
+
+                // Determinar si está emitiendo o absorbiendo energía
+                if (newOrbit > this.currentOrbit) {
+                    this.isAbsorbing = true;
+                } else {
+                    this.isEmitting = true;
+                }
+
+                // Actualizar el spin
+                this.spin = newSpin;
+            }
+        }
+
+        // Función para obtener el radio de una órbita según su número
+        function getOrbitRadius(orbitNumber) {
+            return baseOrbitRadius + orbitIncrement * orbitNumber;
+        }
+
+        // Función para generar la distribución de órbitas y sub-órbitas
+        function generateOrbitals() {
+            orbitals = [];
+            const maxElectronsPerShell = [2, 8, 18, 32, 50, 72, 98];
+
+            for (let i = 0; i < maxElectronsPerShell.length; i++) {
+                const shellNumber = i + 1;
+                const maxElectrons = maxElectronsPerShell[i];
+                const subOrbitalsCount = Math.ceil(maxElectrons / 2); // Cada sub-órbita puede tener hasta 2 electrones
+                const shell = {
+                    shellNumber: shellNumber,
+                    maxElectrons: maxElectrons,
+                    subOrbitals: [] // Cada sub-órbita tendrá hasta 2 electrones
+                };
+                for (let j = 0; j < subOrbitalsCount; j++) {
+                    shell.subOrbitals.push([]); // Inicialmente vacía
+                }
+                orbitals.push(shell);
+            }
+        }
+
+        // Función para inicializar la información de los electrones
+        function initializeElectrons() {
+            electronsData = [];
+            let electronIndex = 0;
+
+            for (let i = 0; i < orbitals.length; i++) {
+                const shell = orbitals[i];
+                for (let j = 0; j < shell.subOrbitals.length; j++) {
+                    if (electronIndex >= electronsCount) break;
+                    const subOrbital = shell.subOrbitals[j];
+                    if (subOrbital.length < 2) {
+                        // Asignar spin según el número de electrones en la sub-órbita
+                        const spin = subOrbital.length === 0 ? 'up' : 'down';
+                        const angle = Math.random() * 2 * Math.PI;
+                        const electron = new Electron(shell.shellNumber, j + 1, angle, spin);
+                        electronsData.push(electron);
+                        subOrbital.push(electron);
+                        electronIndex++;
+                    }
+                }
+                if (electronIndex >= electronsCount) break;
+            }
+        }
+
+        // Función para generar el menú de selección de electrones
+        function generateElectronSelect() {
+            const electronSelect = document.getElementById('electronSelect');
+            electronSelect.innerHTML = '<option value="" disabled selected>Elige</option>';
+            for (let i = 0; i < electronsData.length; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.text = `Electrón ${i + 1}`;
+                electronSelect.appendChild(option);
+            }
+        }
+
+        // Función para generar el menú de selección de órbitas
+        function generateOrbitSelect() {
+            const newOrbitSelect = document.getElementById('newOrbit');
+            newOrbitSelect.innerHTML = '<option value="" disabled selected>Elige</option>';
+            for (let i = 1; i <= orbitals.length; i++) {
+                const shell = orbitals[i - 1];
+                for (let j = 1; j <= shell.subOrbitals.length; j++) {
+                    const option = document.createElement('option');
+                    option.value = `${i}-${j}`; // Formato "shell-subOrbit"
+                    option.text = `Órbita ${i} (${shellLabels[i]}), Sub-órbita ${j} (${subOrbitLabels[j - 1]})`;
+                    newOrbitSelect.appendChild(option);
+                }
+            }
+        }
+
+        // Función para dibujar el átomo
+        function drawAtom() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar el núcleo
+            const nucleusRadius = 30 + (protons + neutrons) * 2;
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height / 2, nucleusRadius, 0, 2 * Math.PI, false);
+            ctx.fillStyle = 'orange';
+            ctx.fill();
+            ctx.stroke();
+
+            // Mostrar protones y neutrones en el núcleo
+            const particles = [];
+            for (let i = 0; i < protons; i++) {
+                particles.push({ type: 'proton' });
+            }
+            for (let i = 0; i < neutrons; i++) {
+                particles.push({ type: 'neutron' });
+            }
+
+            if (particles.length > 0) {
+                const angleStep = (2 * Math.PI) / particles.length;
+                for (let i = 0; i < particles.length; i++) {
+                    const angle = i * angleStep;
+                    const x = canvas.width / 2 + (nucleusRadius / 2) * Math.cos(angle);
+                    const y = canvas.height / 2 + (nucleusRadius / 2) * Math.sin(angle);
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = particles[i].type === 'proton' ? 'red' : 'gray';
+                    ctx.fill();
+                }
+            }
+
+            // Dibujar órbitas y electrones
+            for (let i = 0; i < orbitals.length; i++) {
+                const shell = orbitals[i];
+                const orbitRadius = getOrbitRadius(shell.shellNumber);
+                const subOrbitals = shell.subOrbitals;
+
+                // Dibujar la órbita
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, orbitRadius, 0, 2 * Math.PI, false);
+                ctx.strokeStyle = '#7f8c8d';
+                ctx.stroke();
+
+                // Calcular ángulo para la etiqueta de la órbita
+                const shellLabelAngle = ((shell.shellNumber - 1) % 4) * (Math.PI / 2) + (Math.PI / 4); // 45°, 135°, 225°, 315°
+                const labelOffset = 30; // Distancia adicional para la etiqueta
+                const labelX = canvas.width / 2 + orbitRadius * Math.cos(shellLabelAngle) + labelOffset * Math.cos(shellLabelAngle);
+                const labelY = canvas.height / 2 + orbitRadius * Math.sin(shellLabelAngle) + labelOffset * Math.sin(shellLabelAngle);
+
+                // Dibujar la etiqueta de la órbita en la posición calculada
+                ctx.font = "14px Arial";
+                ctx.fillStyle = '#34495e';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`Órbita ${shell.shellNumber} (${shellLabels[shell.shellNumber]})`, labelX, labelY);
+
+                // Dibujar los electrones en esta órbita
+                for (let j = 0; j < subOrbitals.length; j++) {
+                    const subOrbital = subOrbitals[j];
+                    for (let k = 0; k < subOrbital.length; k++) {
+                        const electron = subOrbital[k];
+                        electron.draw();
+                    }
+                }
+            }
+
+            // Calcular carga neta y ajustar representación de la fuerza
+            const netCharge = protons - electronsCount;
+            const forceLineWidth = Math.min(Math.abs(netCharge), 10); // Limitar el grosor máximo
+            const forceColor = netCharge > 0 ? 'red' : netCharge < 0 ? 'blue' : 'green';
+
+            // Mostrar fuerzas interactuantes (simplificadas)
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, canvas.height / 2);
+            ctx.lineTo(canvas.width / 2 + 180, canvas.height / 2); // Ajusta la longitud según el núcleo
+            ctx.strokeStyle = forceColor;
+            ctx.lineWidth = 1 + forceLineWidth; // Ajustar grosor según la carga neta
+            ctx.stroke();
+
+            // Etiqueta de la fuerza
+            ctx.font = "16px Arial";
+            ctx.fillStyle = forceColor;
+            const forceLabel = `Carga neta: ${netCharge}`;
+            ctx.fillText(forceLabel, canvas.width / 2 + 190, canvas.height / 2 - 10);
+
+            // Restablecer el grosor de línea para futuros dibujos
+            ctx.lineWidth = 1;
+        }
+
+        // Función para dibujar el spin de un electrón
+        function drawSpin(x, y, spin) {
+            const spinSize = 15; // Tamaño de la flecha
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.font = `${spinSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = spin === 'up' ? 'green' : 'red';
+            ctx.fillText(spin === 'up' ? '↑' : '↓', 0, -15); // Ajustar la posición de la flecha
+            ctx.restore();
+        }
+
+        // Función para cambiar la órbita de un electrón
+        function changeElectronOrbit(electronIndex, orbitSubOrbit) {
+            const [newOrbit, newSubOrbit] = orbitSubOrbit.split('-').map(Number);
+            if (newOrbit < 1 || newSubOrbit < 1) return;
+
+            const electron = electronsData[electronIndex];
+            const currentOrbit = electron.currentOrbit;
+            const currentSubOrbit = electron.subOrbit;
+
+            if (newOrbit === currentOrbit && newSubOrbit === currentSubOrbit) {
+                alert('El electrón ya está en esta órbita y sub-órbita.');
+                return;
+            }
+
+            // Verificar si la nueva sub-órbita está dentro de las limitaciones
+            const shell = orbitals[newOrbit - 1];
+            if (!shell) {
+                alert('Órbita inválida.');
+                return;
+            }
+
+            const targetSubOrbital = shell.subOrbitals[newSubOrbit - 1];
+            if (!targetSubOrbital) {
+                alert('Sub-órbita inválida.');
+                return;
+            }
+
+            // Verificar si la sub-órbita tiene espacio (hasta 2 electrones con spins opuestos)
+            if (targetSubOrbital.length >= 2) {
+                alert('La sub-órbita seleccionada está llena.');
+                return;
+            }
+
+            // Determinar el spin disponible en la nueva sub-órbita
+            let availableSpin = 'up';
+            if (targetSubOrbital.some(e => e.spin === 'up')) {
+                availableSpin = 'down';
+            }
+
+            // Actualizar la distribución de sub-órbitas
+            // Eliminar el electrón de su sub-órbita actual
+            const currentShellData = orbitals[currentOrbit - 1];
+            const currentSubOrbitalData = currentShellData.subOrbitals[currentSubOrbit - 1];
+            const electronIndexInSub = currentSubOrbitalData.indexOf(electron);
+            if (electronIndexInSub !== -1) {
+                currentSubOrbitalData.splice(electronIndexInSub, 1);
+            }
+
+            // Añadir el electrón a la nueva sub-órbita
+            targetSubOrbital.push(electron);
+
+            // Actualizar el electrón con la nueva órbita, sub-órbita y spin
+            electron.changeOrbit(newOrbit, newSubOrbit, availableSpin);
+
+            // Redibujar el átomo con la nueva distribución
+            drawAtom();
+
+            // Mostrar mensaje de energía
+            const energyMessage = newOrbit > currentOrbit ? 'absorbiendo energía.' : 'emitiendo energía.';
+            electronInfoDiv.innerHTML = `El electrón ${electronIndex + 1} ha cambiado a la Órbita ${newOrbit} (${shellLabels[newOrbit]}), Sub-órbita ${newSubOrbit} (${subOrbitLabels[newSubOrbit - 1]}), ${energyMessage}`;
+
+            // Mostrar animación de fotón
+            showPhoton(currentOrbit, newOrbit, electron);
+
+            // Limpiar el mensaje después de unos segundos
+            setTimeout(() => {
+                electronInfoDiv.innerHTML = '';
+            }, 6000);
+        }
+
+        // Función para mostrar una animación de fotón durante el cambio de órbita
+        function showPhoton(fromOrbit, toOrbit, electron) {
+            const photon = document.createElement('div');
+            photon.classList.add('photon');
+
+            // Determinar la posición inicial y final del fotón
+            const fromRadius = getOrbitRadius(fromOrbit);
+            const toRadius = getOrbitRadius(toOrbit);
+
+            // Posición inicial (desde el electrón original)
+            const angle = electron.angle;
+            const startX = canvas.width / 2 + fromRadius * Math.cos(angle) - 5; // -5 para centrar el fotón
+            const startY = canvas.height / 2 + fromRadius * Math.sin(angle) - 5;
+            photon.style.left = `${startX}px`;
+            photon.style.top = `${startY}px`;
+
+            // Establecer el color según emisión o absorción
+            if (toOrbit > fromOrbit) {
+                // Absorción: azul
+                photon.style.backgroundColor = 'blue';
+                photon.style.boxShadow = '0 0 10px 2px rgba(0, 0, 255, 0.8)';
+            } else {
+                // Emisión: rojo
+                photon.style.backgroundColor = 'red';
+                photon.style.boxShadow = '0 0 10px 2px rgba(255, 0, 0, 0.8)';
+            }
+
+            // Añadir al contenedor de fotones
+            photonContainer.appendChild(photon);
+
+            // Forzar reflow para asegurar que la transición ocurra
+            void photon.offsetWidth;
+
+            // Animar hacia el centro (absorción) o desde el centro (emisión)
+            if (toOrbit > fromOrbit) {
+                // Absorción: fotón se mueve desde afuera hacia la nueva órbita
+                const endX = canvas.width / 2 + toRadius * Math.cos(angle) - 5;
+                const endY = canvas.height / 2 + toRadius * Math.sin(angle) - 5;
+                photon.style.transform = `translate(${endX - startX}px, ${endY - startY}px)`;
+            } else {
+                // Emisión: fotón se mueve desde la órbita actual hacia afuera
+                const distance = 200; // Distancia que recorrerá el fotón
+                const endX = startX + distance * Math.cos(angle);
+                const endY = startY + distance * Math.sin(angle);
+                photon.style.transform = `translate(${endX - startX}px, ${endY - startY}px)`;
+            }
+
+            // Animar la desaparición del fotón
+            photon.addEventListener('transitionend', () => {
+                photon.style.opacity = '0';
+                setTimeout(() => {
+                    photon.remove();
+                }, 500);
+            });
+        }
+
+        // Función para generar un nuevo átomo
+        function generateNewAtom() {
+            generateOrbitals();
+            initializeElectrons();
+            generateElectronSelect();
+            generateOrbitSelect();
+            drawAtom();
+        }
+
+        // Inicializar el átomo al cargar la página
+        window.onload = function() {
+            generateNewAtom();
+        };
+
+        // Función de Animación para los electrones
+        function animate() {
+            electronsData.forEach(electron => {
+                electron.update();
+            });
+            drawAtom();
+            requestAnimationFrame(animate);
+        }
+
+        animate(); // Iniciar la animación
+
+        // Event Listener para el Botón "Generar Átomo"
+        document.getElementById('generateButton').addEventListener('click', function() {
+            protons = parseInt(document.getElementById('protons').value);
+            neutrons = parseInt(document.getElementById('neutrons').value);
+            electronsCount = parseInt(document.getElementById('electrons').value);
+
+            // Validar los valores ingresados
+            if (isNaN(protons) || protons < 1) {
+                alert('Por favor, ingresa un número válido de protones (mínimo 1).');
+                return;
+            }
+            if (isNaN(neutrons) || neutrons < 0) {
+                alert('Por favor, ingresa un número válido de neutrones (mínimo 0).');
+                return;
+            }
+            if (isNaN(electronsCount) || electronsCount < 0) {
+                alert('Por favor, ingresa un número válido de electrones (mínimo 0).');
+                return;
+            }
+
+            generateNewAtom();
+        });
+
+        // Event Listener para el Botón "Cambiar Órbita"
+        document.getElementById('changeOrbitButton').addEventListener('click', function() {
+            const electronIndex = parseInt(document.getElementById('electronSelect').value);
+            const orbitSubOrbit = document.getElementById('newOrbit').value;
+            if (!isNaN(electronIndex) && orbitSubOrbit) {
+                changeElectronOrbit(electronIndex, orbitSubOrbit);
+            } else {
+                alert('Por favor, selecciona un electrón y una nueva órbita/sub-órbita.');
+            }
+        });
+
+        // Event Listener para el Checkbox de Spin
+        spinToggle.addEventListener('change', function() {
+            incorporateSpin = this.checked;
+            drawAtom();
+        });
+    </script>
+</body>
+</html>

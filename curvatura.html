@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulación de Órbitas con Excentricidad</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        #controls, #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            user-select: none;
+            z-index: 1;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        #info {
+            top: auto;
+            bottom: 10px;
+        }
+        #controls label, #controls input, #info p {
+            display: block;
+            margin-bottom: 10px;
+        }
+        #controls input[type=range] {
+            width: 200px;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <label for="massRange">Masa del objeto:</label>
+        <input type="range" id="massRange" min="10" max="500" value="50">
+        <span id="massValue">50</span>
+
+        <label for="semiMajorAxisRange">Semieje mayor de las órbitas (a):</label>
+        <input type="range" id="semiMajorAxisRange" min="50" max="300" value="150">
+        <span id="semiMajorAxisValue">150</span>
+
+        <label for="eccentricityRange">Excentricidad de las órbitas (e):</label>
+        <input type="range" id="eccentricityRange" min="0" max="0.9" step="0.01" value="0">
+        <span id="eccentricityValue">0</span>
+
+        <label for="particleCountRange">Cantidad de partículas:</label>
+        <input type="range" id="particleCountRange" min="10" max="200" value="50">
+        <span id="particleCountValue">50</span>
+    </div>
+    <div id="info">
+        <p>Radio de Schwarzschild: <span id="schwarzschildRadiusValue">0</span></p>
+        <p>Partículas atrapadas: <span id="trappedParticlesValue">0</span></p>
+        <p>Partículas restantes: <span id="remainingParticlesValue">0</span></p>
+    </div>
+    <canvas id="canvas"></canvas>
+    <script>
+        // Obtener el canvas y su contexto
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Ajustar tamaño del canvas al tamaño de la ventana
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Variables globales
+        let mass = 50; // Masa del objeto central
+        let particles = []; // Array para almacenar las partículas
+        let grid = []; // Array para almacenar puntos de la cuadrícula
+        const gridSize = 20; // Tamaño de las celdas de la cuadrícula
+        let particleCount = 50; // Cantidad de partículas
+        let semiMajorAxis = 150; // Semieje mayor de las órbitas (a)
+        let eccentricity = 0; // Excentricidad de las órbitas (e)
+        let trappedParticles = 0; // Contador de partículas atrapadas
+
+        // Constante gravitacional (ajustada para la simulación)
+        const G = 0.5;
+        // Velocidad de la luz (límite de velocidad)
+        const c = 20;
+
+        // Obtener los elementos de control
+        const massRange = document.getElementById('massRange');
+        const massValue = document.getElementById('massValue');
+        const particleCountRange = document.getElementById('particleCountRange');
+        const particleCountValue = document.getElementById('particleCountValue');
+        const semiMajorAxisRange = document.getElementById('semiMajorAxisRange');
+        const semiMajorAxisValue = document.getElementById('semiMajorAxisValue');
+        const eccentricityRange = document.getElementById('eccentricityRange');
+        const eccentricityValue = document.getElementById('eccentricityValue');
+
+        // Elementos de información
+        const schwarzschildRadiusValue = document.getElementById('schwarzschildRadiusValue');
+        const trappedParticlesValue = document.getElementById('trappedParticlesValue');
+        const remainingParticlesValue = document.getElementById('remainingParticlesValue');
+
+        // Event Listener para cambiar la masa
+        massRange.addEventListener('input', function() {
+            mass = parseFloat(this.value);
+            massValue.textContent = this.value;
+            calculateSchwarzschildRadius(); // Recalcular el radio de Schwarzschild
+            createParticles(); // Actualizar las partículas con nuevas velocidades iniciales
+        });
+
+        // Event Listener para cambiar la cantidad de partículas
+        particleCountRange.addEventListener('input', function() {
+            particleCount = parseInt(this.value);
+            particleCountValue.textContent = this.value;
+            createParticles(); // Actualizar las partículas
+        });
+
+        // Event Listener para cambiar el semieje mayor
+        semiMajorAxisRange.addEventListener('input', function() {
+            semiMajorAxis = parseInt(this.value);
+            semiMajorAxisValue.textContent = this.value;
+            createParticles(); // Actualizar las partículas
+        });
+
+        // Event Listener para cambiar la excentricidad
+        eccentricityRange.addEventListener('input', function() {
+            eccentricity = parseFloat(this.value);
+            eccentricityValue.textContent = this.value;
+            createParticles(); // Actualizar las partículas
+        });
+
+        // Variables para el radio de Schwarzschild
+        let schwarzschildRadius = 0;
+
+        function calculateSchwarzschildRadius() {
+            // Constante de Schwarzschild (ajustada para la simulación)
+            const K = 2 * G;
+            schwarzschildRadius = K * mass;
+            schwarzschildRadiusValue.textContent = schwarzschildRadius.toFixed(2);
+        }
+
+        // Crear partículas con posición y velocidad inicial
+        function createParticles() {
+            particles = [];
+            trappedParticles = 0;
+            for (let i = 0; i < particleCount; i++) {
+                const angle = Math.random() * Math.PI * 2; // Ángulo aleatorio
+
+                const a = semiMajorAxis; // Semieje mayor
+                const e = eccentricity; // Excentricidad
+                const b = a * Math.sqrt(1 - e * e); // Semieje menor
+
+                // Posición inicial en coordenadas polares
+                const theta = angle;
+                const r = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+
+                const x = canvas.width / 2 + r * Math.cos(theta);
+                const y = canvas.height / 2 + r * Math.sin(theta);
+
+                // Calcular la velocidad orbital en función de la masa actual, limitada por c
+                const mu = G * mass;
+                const h = Math.sqrt(mu * a * (1 - e * e)); // Momento angular específico
+                let orbitalSpeed = h / r;
+
+                // Aplicar límite de velocidad
+                if (orbitalSpeed > c) {
+                    orbitalSpeed = c;
+                }
+
+                // Dirección de la velocidad
+                const vx = x0 = canvas.width / 2;
+                const vy = y0 = canvas.height / 2;
+                const dx = x - x0;
+                const dy = y - y0;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                // Vector tangente (perpendicular al radio)
+                const tx = -dy / distance;
+                const ty = dx / distance;
+
+                // Velocidades iniciales
+                const vxi = tx * orbitalSpeed;
+                const vyi = ty * orbitalSpeed;
+
+                particles.push({
+                    x: x, // Posición X
+                    y: y, // Posición Y
+                    vx: vxi, // Velocidad inicial X
+                    vy: vyi, // Velocidad inicial Y
+                    size: 2, // Tamaño de la partícula
+                    color: '#00BFFF', // Color de la partícula (Azul profundo)
+                    trapped: false // Indica si la partícula está dentro del radio de Schwarzschild
+                });
+            }
+            remainingParticlesValue.textContent = particles.length;
+            trappedParticlesValue.textContent = trappedParticles;
+        }
+
+        // Crear cuadrícula de referencia
+        function createGrid() {
+            grid = [];
+            for (let x = 0; x <= canvas.width; x += gridSize) {
+                for (let y = 0; y <= canvas.height; y += gridSize) {
+                    grid.push({ x: x, y: y });
+                }
+            }
+        }
+
+        // Dibujar cuadrícula deformada para simular curvatura
+        function drawGrid() {
+            ctx.strokeStyle = '#444';
+            grid.forEach(point => {
+                const dx = point.x - canvas.width / 2;
+                const dy = point.y - canvas.height / 2;
+                const distance = Math.sqrt(dx * dx + dy * dy) + 0.1;
+                // Fuerza gravitacional simplificada con factor de escala
+                const force = (mass * 5000) / (distance * distance + 10000);
+                const offsetX = dx * force;
+                const offsetY = dy * force;
+
+                ctx.beginPath();
+                ctx.arc(point.x - offsetX, point.y - offsetY, 1, 0, Math.PI * 2);
+                ctx.fillStyle = '#555';
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        // Dibujar y actualizar partículas
+        function drawParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+
+                // Calcular vector de posición desde el centro
+                const dx = canvas.width / 2 - particle.x;
+                const dy = canvas.height / 2 - particle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy) + 0.1;
+
+                // Verificar si la partícula está dentro del radio de Schwarzschild
+                if (distance < schwarzschildRadius) {
+                    particles.splice(i, 1);
+                    trappedParticles++;
+                    trappedParticlesValue.textContent = trappedParticles;
+                    remainingParticlesValue.textContent = particles.length;
+                    continue;
+                }
+
+                // Calcular fuerza gravitacional
+                const forceMagnitude = (G * mass) / (distance * distance);
+                const accelX = (dx / distance) * forceMagnitude; // Aceleración en X
+                const accelY = (dy / distance) * forceMagnitude; // Aceleración en Y
+
+                // Actualizar velocidad con aceleración
+                particle.vx += accelX;
+                particle.vy += accelY;
+
+                // Aplicar límite de velocidad (velocidad de la luz)
+                const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+                if (speed > c) {
+                    particle.vx = (particle.vx / speed) * c;
+                    particle.vy = (particle.vy / speed) * c;
+                }
+
+                // Actualizar posición con velocidad
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+
+                // Dibujar partícula
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fillStyle = particle.color;
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        // Dibujar objeto central (masa) destacado
+        function drawCentralObject() {
+            // Dibujar el radio de Schwarzschild
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height / 2, schwarzschildRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = '#FF0000'; // Rojo para el horizonte de eventos
+            ctx.stroke();
+            ctx.closePath();
+
+            // Dibujar la masa central
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height / 2, mass / 5, 0, Math.PI * 2); // Tamaño proporcional a la masa
+            ctx.fillStyle = '#FFD700'; // Color dorado para destacar
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Animación principal
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar canvas
+            drawGrid(); // Dibujar cuadrícula
+            drawCentralObject(); // Dibujar masa central y radio de Schwarzschild
+            drawParticles(); // Dibujar y actualizar partículas
+            requestAnimationFrame(animate); // Loop de animación
+        }
+
+        // Inicialización
+        calculateSchwarzschildRadius();
+        createGrid(); // Crear cuadrícula
+        createParticles(); // Crear partículas
+        animate(); // Iniciar animación
+    </script>
+</body>
+</html>

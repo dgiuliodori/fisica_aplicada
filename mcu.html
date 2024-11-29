@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Contenido existente del head -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Aplicada</title>
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <!-- Incluir Plotly.js -->
+    <script src="js_lib/plotly-latest.min.js"></script>
+    <!-- Incluir math.js -->
+    <script src="js_lib/math.min.js"></script>
+    <script src="js/menuData.js"></script>
+    <script src="js/generarMenu.js"></script>
+    <script id="MathJax-script" async src="js_lib/tex-mml-chtml.js"></script>
+    <style>
+        /* Estilos existentes */
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        .controls, .calculations {
+            flex: 1 1 300px;
+            margin: 10px;
+            padding: 15px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .controls label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        .controls input[type="range"], .controls input[type="number"] {
+            width: 100%;
+        }
+        canvas {
+            background-color: #e6e6e6;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+        }
+        .calculations p {
+            margin: 8px 0;
+        }
+        .controls button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Movimiento Circular Uniforme</h1>
+    </header>
+    <nav>
+        <!-- Navegación opcional -->
+    </nav>
+    <div class="parametros">
+        <aside id="sidebar">
+            <h2>Parámetros</h2>
+            <div class="slider-container">
+                <label>
+                    Radio (m):
+                    <input type="range" id="radioInput" value="100" min="50" max="300">
+                </label>
+            </div>
+            <div class="slider-container">
+                <label>
+                    Velocidad Angular (rad/s):
+                    <input type="range" id="omegaInput" value="0.5" step="0.01" min="0.01" max="5">
+                </label>
+            </div>
+            <div class="slider-container">
+                <button id="startBtn">Iniciar Simulación</button>
+            </div>
+            <div class="slider-container">
+                <button id="stopBtn" disabled>Detener Simulación</button>
+            </div>
+        </aside>
+    </div>
+    <main id="content"> 
+        <div class="calculations">
+            <h2>Cálculos</h2>
+            <p id="periodo">Período (T): </p>
+            <p id="frecuencia">Frecuencia (f): </p>
+            <p id="velocidadLineal">Velocidad Lineal (v): </p>
+            <p id="aceleracionCentripeta">Aceleración Centrípeta (a<sub>c</sub>): </p>
+        </div>
+        <canvas id="mcuCanvas" width="500" height="500"></canvas>
+    </main>
+    <br>
+    <footer>
+        &copy; 2024 Física Aplicada - dgiuliodori@unc.edu.ar 
+    </footer>
+    <script>
+        const canvas = document.getElementById('mcuCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const radioInput = document.getElementById('radioInput');
+        const omegaInput = document.getElementById('omegaInput');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+
+        const periodoP = document.getElementById('periodo');
+        const frecuenciaP = document.getElementById('frecuencia');
+        const velocidadLinealP = document.getElementById('velocidadLineal');
+        const aceleracionCentripetaP = document.getElementById('aceleracionCentripeta');
+
+        let animationId;
+        let theta = 0; // Ángulo inicial
+
+        function updateCalculations(r, omega) {
+            const T = (2 * Math.PI) / omega; // Período
+            const f = 1 / T; // Frecuencia
+            const v = r * omega; // Velocidad lineal
+            const a_c = (v * v) / r; // Aceleración centrípeta
+
+            periodoP.innerHTML = `Período (T): ${T.toFixed(2)} s`;
+            frecuenciaP.innerHTML = `Frecuencia (f): ${f.toFixed(2)} Hz`;
+            velocidadLinealP.innerHTML = `Velocidad Lineal (v): ${v.toFixed(2)} m/s`;
+            aceleracionCentripetaP.innerHTML = `Aceleración Centrípeta (a<sub>c</sub>): ${a_c.toFixed(2)} m/s²`;
+        }
+
+        function drawCircle(centerX, centerY, radius) {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function drawObject(x, y, radius = 10, color = '#FF0000') {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        function drawVector(startX, startY, endX, endY, color = '#000', label = '') {
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Dibujar flecha
+            const headlen = 10; // Tamaño de la cabeza de flecha
+            const dx = endX - startX;
+            const dy = endY - startY;
+            const angle = Math.atan2(dy, dx);
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.lineTo(endX, endY);
+            ctx.fillStyle = color;
+            ctx.fill();
+
+            if (label) {
+                ctx.fillStyle = color;
+                ctx.font = '16px Arial';
+                ctx.fillText(label, endX + 5, endY + 5);
+            }
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function animate() {
+            const r = parseFloat(radioInput.value);
+            const omega = parseFloat(omegaInput.value);
+
+            theta += omega * (1 / 60); // Asumiendo 60 fps
+
+            // Centrar el círculo en el canvas
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Calcular posición del objeto
+            const x = centerX + r * Math.cos(theta);
+            const y = centerY + r * Math.sin(theta);
+
+            // Componentes unitarios de los vectores
+            const vx_unit = -Math.sin(theta);
+            const vy_unit = Math.cos(theta);
+
+            const ax_unit = -Math.cos(theta);
+            const ay_unit = -Math.sin(theta);
+
+            clearCanvas();
+            drawCircle(centerX, centerY, r);
+            drawObject(x, y);
+
+            // Dibujar radio (vector verde)
+            drawVector(centerX, centerY, x, y, '#00FF00', 'r');
+
+            // Dibujar vector de velocidad tangencial (vector rojo) con longitud fija
+            const velocidadVectorLength = 50; // Longitud fija en píxeles
+            drawVector(x, y, x + vx_unit * velocidadVectorLength, y + vy_unit * velocidadVectorLength, '#FF0000', 'v');
+
+            // Dibujar vector de aceleración centrípeta (vector azul), proporcional a su magnitud
+            const a_c = r * omega * omega; // Aceleración centrípeta
+            const aceleracionScale = 0.05; // Factor de escala para visualizar el vector
+            drawVector(x, y, x + ax_unit * a_c * aceleracionScale, y + ay_unit * a_c * aceleracionScale, '#0000FF', 'a_c');
+
+            // Indicar velocidad angular (omega)
+            ctx.fillStyle = '#000';
+            ctx.font = '16px Arial';
+            ctx.fillText(`ω = ${omega.toFixed(2)} rad/s`, centerX + r + 10, centerY);
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        startBtn.addEventListener('click', () => {
+            const r = parseFloat(radioInput.value);
+            const omega = parseFloat(omegaInput.value);
+
+            if (isNaN(r) || r <= 0) {
+                alert('Por favor, ingresa un radio válido (mayor que 0).');
+                return;
+            }
+            if (isNaN(omega) || omega <= 0) {
+                alert('Por favor, ingresa una velocidad angular válida (mayor que 0).');
+                return;
+            }
+
+            updateCalculations(r, omega);
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            animate();
+        });
+
+        stopBtn.addEventListener('click', () => {
+            cancelAnimationFrame(animationId);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        });
+
+        // Opcional: Actualizar cálculos en tiempo real al cambiar los parámetros
+        radioInput.addEventListener('input', () => {
+            const r = parseFloat(radioInput.value);
+            const omega = parseFloat(omegaInput.value);
+            if (!isNaN(r) && !isNaN(omega)) {
+                updateCalculations(r, omega);
+            }
+        });
+
+        omegaInput.addEventListener('input', () => {
+            const r = parseFloat(radioInput.value);
+            const omega = parseFloat(omegaInput.value);
+            if (!isNaN(r) && !isNaN(omega)) {
+                updateCalculations(r, omega);
+            }
+        });
+
+        // Inicializar cálculos al cargar la página
+        window.onload = () => {
+            const r = parseFloat(radioInput.value);
+            const omega = parseFloat(omegaInput.value);
+            updateCalculations(r, omega);
+        };
+    </script>
+</body>
+</html>

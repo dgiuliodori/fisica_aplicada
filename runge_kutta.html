@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Simulación de un Sistema de Ecuaciones Diferenciales - Mejorado</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    h1, h2 {
+      text-align: center;
+    }
+
+    p {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .info-box {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background: #e9f5fc;
+      margin-bottom: 20px;
+    }
+
+    .input-section {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      margin-bottom: 20px;
+      gap: 20px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      width: 200px;
+    }
+
+    .input-group label {
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .input-group input {
+      padding: 8px;
+      margin-bottom: 5px;
+      text-align: right;
+    }
+
+    .button-section {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #plotCanvas {
+      border: 1px solid #000;
+      display: block;
+      margin: 0 auto;
+      background-color: #fff;
+    }
+
+    .legend {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .legend span {
+      margin-left: 10px;
+      margin-right: 10px;
+      padding: 2px 8px;
+    }
+
+    .legend .final-solution {
+      background-color: red;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .legend .trajectories {
+      background-color: blue;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* Parámetros adicionales para personalizar el gráfico */
+    .graph-params {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .graph-params label {
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    .graph-params input {
+      width: 100px;
+      padding: 5px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simulación de un Sistema de Ecuaciones Diferenciales</h1>
+  <p>
+    Este ejemplo resuelve el sistema de ecuaciones diferenciales:<br>
+    <code>dx/dt = 0.1 * x - 0.02 * x * y</code> y 
+    <code>dy/dt = -0.3 * y + 0.01 * x * y</code><br>
+    utilizando el método de Runge-Kutta de 4º orden.
+  </p>
+
+  <div class="info-box">
+    <strong>Descripción:</strong><br>
+    Este sistema de ecuaciones puede modelar la interacción entre dos poblaciones o especies en un modelo depredador-presa simplificado. La solución se muestra en el plano fase (x, y).
+  </div>
+
+  <h2>Parámetros de Entrada</h2>
+  <div class="input-section">
+    <div class="input-group">
+      <label for="x0-input">Valor inicial de x (x0):</label>
+      <input type="number" id="x0-input" value="2" step="0.01">
+    </div>
+    <div class="input-group">
+      <label for="y0-input">Valor inicial de y (y0):</label>
+      <input type="number" id="y0-input" value="5" step="0.01">
+    </div>
+    <div class="input-group">
+      <label for="sim-input">Número de discretizaciones (sim):</label>
+      <input type="number" id="sim-input" value="20" step="1">
+    </div>
+    <div class="input-group">
+      <label for="pasox-input">Incremento de x (pasox):</label>
+      <input type="number" id="pasox-input" value="0.03" step="0.01">
+    </div>
+    <div class="input-group">
+      <label for="pasoy-input">Incremento de y (pasoy):</label>
+      <input type="number" id="pasoy-input" value="0.03" step="0.01">
+    </div>
+    <div class="input-group">
+      <label for="n-input">Número de pasos (n):</label>
+      <input type="number" id="n-input" value="100" step="1">
+    </div>
+    <div class="input-group">
+      <label for="delta_t-input">Tamaño de paso (delta_t):</label>
+      <input type="number" id="delta_t-input" value="0.1" step="0.01">
+    </div>
+  </div>
+
+  <h2>Parámetros del Gráfico</h2>
+  <div class="graph-params">
+    <label for="grid-size-input">Tamaño de la cuadrícula:</label>
+    <input type="number" id="grid-size-input" value="10" step="1">
+    <label for="point-size-input">Tamaño de los puntos:</label>
+    <input type="number" id="point-size-input" value="2" step="1">
+    <label for="line-width-input">Grosor de líneas:</label>
+    <input type="number" id="line-width-input" value="1" step="1">
+  </div>
+
+  <div class="button-section">
+    <button onclick="simulate()">Simular</button>
+  </div>
+
+  <canvas id="plotCanvas" width="800" height="600"></canvas>
+  <div class="legend">
+    <span class="trajectories">Trayectorias</span>
+    <span class="final-solution">Solución Final</span>
+  </div>
+
+  <script>
+    // Define la función del sistema de ecuaciones diferenciales
+    function func(x, y) {
+      const xp = 0.1 * x - 0.02 * x * y;
+      const yp = -0.3 * y + 0.01 * x * y;
+      return [xp, yp];
+    }
+
+    // Implementa el método de Runge-Kutta de 4º orden para un sistema de ecuaciones
+    function rungeKutta(xn, yn, delta_t) {
+      let [k1x, k1y] = func(xn, yn);
+      k1x *= delta_t;
+      k1y *= delta_t;
+
+      let [k2x, k2y] = func(xn + 0.5 * k1x, yn + 0.5 * k1y);
+      k2x *= delta_t;
+      k2y *= delta_t;
+
+      let [k3x, k3y] = func(xn + 0.5 * k2x, yn + 0.5 * k2y);
+      k3x *= delta_t;
+      k3y *= delta_t;
+
+      let [k4x, k4y] = func(xn + k3x, yn + k3y);
+      k4x *= delta_t;
+      k4y *= delta_t;
+
+      let xn1 = xn + (1 / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
+      let yn1 = yn + (1 / 6) * (k1y + 2 * k2y + 2 * k3y + k4y);
+
+      return [xn1, yn1];
+    }
+
+    // Función para simular las trayectorias y dibujarlas
+    function simulate() {
+      // Leer los valores de entrada de la simulación
+      const x0 = parseFloat(document.getElementById('x0-input').value);
+      const y0 = parseFloat(document.getElementById('y0-input').value);
+      const sim = parseInt(document.getElementById('sim-input').value);
+      const pasox = parseFloat(document.getElementById('pasox-input').value);
+      const pasoy = parseFloat(document.getElementById('pasoy-input').value);
+      const n = parseInt(document.getElementById('n-input').value);
+      const delta_t = parseFloat(document.getElementById('delta_t-input').value);
+
+      // Leer los valores de los parámetros del gráfico
+      const gridSize = parseInt(document.getElementById('grid-size-input').value);
+      const pointSize = parseInt(document.getElementById('point-size-input').value);
+      const lineWidth = parseInt(document.getElementById('line-width-input').value);
+
+      if (
+        isNaN(x0) || isNaN(y0) || isNaN(sim) ||
+        isNaN(pasox) || isNaN(pasoy) || isNaN(n) || isNaN(delta_t) ||
+        sim <= 0 || n <= 0 || delta_t <= 0
+      ) {
+        alert('Por favor, ingresa valores válidos para todos los parámetros.');
+        return;
+      }
+
+      // Almacenar trayectorias en un array
+      let trayectorias = [];
+      let solucion_final = [x0, y0];  // Para guardar la última solución
+
+      for (let k = 0; k < sim; k++) {
+        let xn_init = x0 + pasox * (k / 10);
+        for (let j = 0; j < sim; j++) {
+          let xn = xn_init;
+          let yn = y0 + pasoy * (j / 10);
+          let trayectoria = new Array(n + 1);
+          trayectoria[0] = [xn, yn];  // Punto inicial
+
+          for (let i = 0; i < n; i++) {
+            let [xn1, yn1] = rungeKutta(xn, yn, delta_t);
+            xn = xn1;
+            yn = yn1;
+            trayectoria[i + 1] = [xn, yn];
+          }
+
+          // Almacenar la trayectoria para esta condición inicial
+          trayectorias.push(trayectoria);
+          // Actualizar la última solución obtenida
+          solucion_final = [xn, yn];
+        }
+      }
+
+      // Dibujar el gráfico
+      drawPlot(trayectorias, solucion_final, gridSize, pointSize, lineWidth);
+    }
+
+    // Función para dibujar el gráfico en el canvas
+    function drawPlot(trayectorias, solucion_final, gridSize, pointSize, lineWidth) {
+      const canvas = document.getElementById('plotCanvas');
+      const ctx = canvas.getContext('2d');
+
+      // Limpiar canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Determinar los valores min y max en x y y para ajustar la escala
+      let allXValues = trayectorias.flat().map(point => point[0]);
+      let allYValues = trayectorias.flat().map(point => point[1]);
+      allXValues.push(solucion_final[0]);
+      allYValues.push(solucion_final[1]);
+
+      let xMin = Math.min(...allXValues);
+      let xMax = Math.max(...allXValues);
+      let yMin = Math.min(...allYValues);
+      let yMax = Math.max(...allYValues);
+
+      // Ajustar rangos en caso de que sean iguales
+      if (xMin === xMax) {
+        xMin -= 1;
+        xMax += 1;
+      }
+      if (yMin === yMax) {
+        yMin -= 1;
+        yMax += 1;
+      }
+
+      // Añadir un margen para mejorar la visualización
+      const marginRatio = 0.1;
+      const xMargin = (xMax - xMin) * marginRatio;
+      const yMargin = (yMax - yMin) * marginRatio;
+      xMin -= xMargin;
+      xMax += xMargin;
+      yMin -= yMargin;
+      yMax += yMargin;
+
+      const padding = 50;
+      const plotWidth = canvas.width - 2 * padding;
+      const plotHeight = canvas.height - 2 * padding;
+
+      // Funciones para escalar los valores (x, y) a coordenadas de canvas
+      const scaleX = x => padding + ((x - xMin) / (xMax - xMin)) * plotWidth;
+      const scaleY = y => canvas.height - padding - ((y - yMin) / (yMax - yMin)) * plotHeight;
+
+      // Dibujar cuadrícula
+      drawGrid(ctx, padding, canvas.width, canvas.height, xMin, xMax, yMin, yMax, scaleX, scaleY, gridSize);
+
+      // Dibujar ejes X y Y
+      drawAxes(ctx, padding, canvas.width, canvas.height, scaleX(0), scaleY(0));
+
+      // Dibujar trayectorias
+      trayectorias.forEach(trayectoria => {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(0, 0, 255, 0.4)';  // Azul con transparencia
+        ctx.lineWidth = lineWidth;
+        ctx.moveTo(scaleX(trayectoria[0][0]), scaleY(trayectoria[0][1]));
+        for (let i = 1; i < trayectoria.length; i++) {
+          ctx.lineTo(scaleX(trayectoria[i][0]), scaleY(trayectoria[i][1]));
+        }
+        ctx.stroke();
+
+        // Dibujar puntos de la trayectoria
+        ctx.fillStyle = 'rgba(0, 0, 255, 0.4)';
+        for (let i = 0; i < trayectoria.length; i++) {
+          ctx.beginPath();
+          ctx.arc(scaleX(trayectoria[i][0]), scaleY(trayectoria[i][1]), pointSize, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      });
+
+      // Dibujar la solución final
+      ctx.beginPath();
+      ctx.arc(scaleX(solucion_final[0]), scaleY(solucion_final[1]), pointSize * 2, 0, 2 * Math.PI);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+
+      // Añadir etiquetas a los ejes
+      addAxisLabels(ctx, canvas.width, canvas.height, padding, 'X', 'Y');
+    }
+
+    // Función para dibujar la cuadrícula
+    function drawGrid(ctx, padding, width, height, xMin, xMax, yMin, yMax, scaleX, scaleY, gridSize) {
+      ctx.save();
+      ctx.strokeStyle = '#ddd';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([1, 2]);
+
+      const xRange = xMax - xMin;
+      const yRange = yMax - yMin;
+
+      const stepX = xRange / gridSize;
+      const stepY = yRange / gridSize;
+
+      // Líneas verticales
+      for (let x = xMin; x <= xMax; x += stepX) {
+        const xPos = scaleX(x);
+        ctx.beginPath();
+        ctx.moveTo(xPos, padding);
+        ctx.lineTo(xPos, height - padding);
+        ctx.stroke();
+      }
+
+      // Líneas horizontales
+      for (let y = yMin; y <= yMax; y += stepY) {
+        const yPos = scaleY(y);
+        ctx.beginPath();
+        ctx.moveTo(padding, yPos);
+        ctx.lineTo(width - padding, yPos);
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Función para dibujar los ejes y las marcas (ticks)
+    function drawAxes(ctx, padding, width, height, originX, originY) {
+      ctx.save();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      // Eje X
+      ctx.beginPath();
+      ctx.moveTo(padding, originY);
+      ctx.lineTo(width - padding, originY);
+      ctx.stroke();
+      // Eje Y
+      ctx.beginPath();
+      ctx.moveTo(originX, padding);
+      ctx.lineTo(originX, height - padding);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Función para añadir etiquetas a los ejes X y Y
+    function addAxisLabels(ctx, width, height, padding, xAxisLabel, yAxisLabel) {
+      ctx.save();
+      ctx.fillStyle = '#000';
+      ctx.font = '16px Arial';
+
+      // Etiqueta del eje X
+      ctx.textAlign = 'right';
+      ctx.fillText(xAxisLabel, width - padding, height / 2 - 10);
+
+      // Etiqueta del eje Y
+      ctx.save();
+      ctx.translate(padding + 10, padding);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'left';
+      ctx.fillText(yAxisLabel, 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+  </script>
+</body>
+</html>

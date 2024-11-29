@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Aplicada</title>
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <!-- Incluir Plotly.js -->
+    <script src="js_lib/plotly-latest.min.js"></script>
+    <!-- Incluir math.js -->
+    <script src="js_lib/math.min.js"></script>
+    <script src="js/menuData.js"></script>
+    <script src="js/generarMenu.js"></script>
+    <script id="MathJax-script" async
+            src="js_lib//tex-mml-chtml.js">
+    </script>
+    <style>
+        /* body {
+            font-family: Arial, sans-serif;
+            background: #f0f4f7;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        } */
+        /* .object-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .object {
+            flex: 1 1 45%;
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .object h2 {
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        } */
+        /* label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background: #0056b3;
+        } */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background: #007bff;
+            color: #fff;
+        }
+        @media (max-width: 800px) {
+            .object-section {
+                flex-direction: column;
+            }
+            .object {
+                flex: 1 1 100%;
+            }
+        }
+        /* Estilos para la animación */
+        .animation-area {
+            position: relative;
+            width: 100%;
+            height: 250px;
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 30px;
+            display: none; /* Oculto por defecto */
+        }
+        .track {
+            position: absolute;
+            top: 50%;
+            left: 50px;
+            right: 50px;
+            height: 4px;
+            background: #343a40;
+            transform: translateY(-50%);
+        }
+        .scale {
+            position: absolute;
+            bottom: 10px;
+            left: 50px;
+            right: 50px;
+            height: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #555;
+        }
+        .object-anim {
+            position: absolute;
+            top: 50%;
+            width: 30px;
+            height: 30px;
+            background: red;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #object1-anim {
+            background: #dc3545;
+        }
+        #object2-anim {
+            background: #28a745;
+        }
+        .info-box {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        /* Estilos para la tabla de resultados en tiempo real */
+        #real-time-table {
+            margin-top: 20px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #real-time-table th, #real-time-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        #real-time-table th {
+            background: #28a745;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Alcance y Encuentro</h1>
+    </header>
+    <nav>
+        <!-- Navegación opcional -->
+    </nav>
+    <div class="parametros">
+        <aside id="sidebar">
+            <h2>Parámetros</h2>
+            <div class="slider-container">
+                <div class="object" id="object1">
+                    <h2>Objeto 1</h2>
+                    <div class="form-group">
+                        <label for="type1">Tipo de Movimiento:</label>
+                        <select id="type1">
+                            <option value="MRU">MRU (Movimiento Rectilíneo Uniforme)</option>
+                            <option value="MRUV">MRUV (Movimiento Rectilíneo Uniformemente Variado)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="position1">Posición Inicial (m):</label>
+                        <input type="number" id="position1" value="0" min="0" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label for="velocity1">Velocidad Inicial (m/s):</label>
+                        <input type="number" id="velocity1" value="10" step="any">
+                    </div>
+                    <div class="form-group" id="acceleration-group1">
+                        <label for="acceleration1">Aceleración (m/s²):</label>
+                        <input type="number" id="acceleration1" value="0" step="any">
+                    </div>
+                </div>
+            </div>
+        <div class="slider-container">
+            <div class="object" id="object2">
+                <h2>Objeto 2</h2>
+                <div class="form-group">
+                    <label for="type2">Tipo de Movimiento:</label>
+                    <select id="type2">
+                        <option value="MRU">MRU (Movimiento Rectilíneo Uniforme)</option>
+                        <option value="MRUV">MRUV (Movimiento Rectilíneo Uniformemente Variado)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="position2">Posición Inicial (m):</label>
+                    <input type="number" id="position2" value="100" min="0" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="velocity2">Velocidad Inicial (m/s):</label>
+                    <input type="number" id="velocity2" value="5" step="any">
+                </div>
+                <div class="form-group" id="acceleration-group2">
+                    <label for="acceleration2">Aceleración (m/s²):</label>
+                    <input type="number" id="acceleration2" value="0" step="any">
+                </div>
+            </div>
+        </div>
+        <div class="slider-container">
+            <button onclick="calculate()">Calcular Encuentro</button>
+        </div>
+    </aside>
+</div>
+<main id="content"> 
+    <!-- Área de Animación -->
+    <div class="animation-area" id="animation-area">
+        <div class="track"></div>
+        <div class="object-anim" id="object1-anim">
+            <div class="info-box">Objeto 1</div>
+        </div>
+        <div class="object-anim" id="object2-anim">
+            <div class="info-box">Objeto 2</div>
+        </div>
+        <!-- Escala de desplazamiento -->
+        <div class="scale" id="scale">
+            <span>0 m</span>
+            <span id="max-distance-label">100 m</span>
+        </div>
+    </div>
+    <!-- Tabla de Resultados en Tiempo Real -->
+    <div id="result">
+        <h2>Resultados Finales</h2>
+        <div id="final-results"></div>
+        <h2>Resultados en Tiempo Real</h2>
+        <table id="real-time-table">
+            <thead>
+                <tr>
+                    <th>Tiempo Transcurrido (s)</th>
+                    <th>Objeto 1 Espacio (m)</th>
+                    <th>Objeto 1 Velocidad Actual (m/s)</th>
+                    <th>Objeto 2 Espacio (m)</th>
+                    <th>Objeto 2 Velocidad Actual (m/s)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="rt-time">0.00</td>
+                    <td id="rt-space1">0.00</td>
+                    <td id="rt-vel1">0.00</td>
+                    <td id="rt-space2">0.00</td>
+                    <td id="rt-vel2">0.00</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</main>
+<br>
+<footer>
+    &copy; 2024 Física Aplicada - dgiuliodori@unc.edu.ar 
+</footer>
+<script>
+    // Mostrar u ocultar campos de aceleración según el tipo de movimiento
+    function toggleAccelerationFields() {
+        const type1 = document.getElementById('type1').value;
+        const accGroup1 = document.getElementById('acceleration-group1');
+        accGroup1.style.display = type1 === 'MRUV' ? 'block' : 'none';
+
+        const type2 = document.getElementById('type2').value;
+        const accGroup2 = document.getElementById('acceleration-group2');
+        accGroup2.style.display = type2 === 'MRUV' ? 'block' : 'none';
+    }
+
+    document.getElementById('type1').addEventListener('change', toggleAccelerationFields);
+    document.getElementById('type2').addEventListener('change', toggleAccelerationFields);
+
+    window.onload = toggleAccelerationFields;
+
+    // Variables para la animación y resultados en tiempo real
+    let animationRequest;
+    let startTime;
+    let encounterTime;
+    let p1AnimStart, p2AnimStart;
+    let v1AnimStart, v2AnimStart;
+    let a1Anim, a2Anim;
+    let maxDistance;
+
+    function calculate() {
+        // Cancelar animación previa si existe
+        if (animationRequest) {
+            cancelAnimationFrame(animationRequest);
+        }
+
+        // Obtener valores del Objeto 1
+        const type1 = document.getElementById('type1').value;
+        const p1 = parseFloat(document.getElementById('position1').value);
+        const v1 = parseFloat(document.getElementById('velocity1').value);
+        const a1 = type1 === 'MRUV' ? parseFloat(document.getElementById('acceleration1').value) : 0;
+
+        // Obtener valores del Objeto 2
+        const type2 = document.getElementById('type2').value;
+        const p2 = parseFloat(document.getElementById('position2').value);
+        const v2 = parseFloat(document.getElementById('velocity2').value);
+        const a2 = type2 === 'MRUV' ? parseFloat(document.getElementById('acceleration2').value) : 0;
+
+        // Validar entradas
+        if (isNaN(p1) || isNaN(v1) || isNaN(p2) || isNaN(v2) ||
+            (type1 === 'MRUV' && isNaN(a1)) ||
+            (type2 === 'MRUV' && isNaN(a2))) {
+            alert('Por favor, asegúrate de ingresar valores numéricos válidos.');
+            return;
+        }
+
+        // Definir las ecuaciones de posición
+        // p1(t) = p1 + v1*t + 0.5*a1*t²
+        // p2(t) = p2 + v2*t + 0.5*a2*t²
+        // Encontrar t donde p1(t) = p2(t)
+
+        // 0.5*(a1 - a2)*t² + (v1 - v2)*t + (p1 - p2) = 0
+        const A = 0.5 * (a1 - a2);
+        const B = v1 - v2;
+        const C = p1 - p2;
+
+        let t;
+        if (A === 0) {
+            if (B === 0) {
+                if (C === 0) {
+                    // Infinitas soluciones
+                    t = 'Infinitas soluciones (Ambos objetos tienen el mismo movimiento)';
+                } else {
+                    // Sin solución
+                    t = 'No hay encuentro (Los objetos nunca se encuentran)';
+                }
+            } else {
+                t = -C / B;
+                if (t < 0) {
+                    t = 'No hay encuentro en el tiempo positivo';
+                }
+            }
+        } else {
+            const discriminant = B * B - 4 * A * C;
+            if (discriminant < 0) {
+                t = 'No hay encuentro real';
+            } else {
+                const t1 = (-B + Math.sqrt(discriminant)) / (2 * A);
+                const t2 = (-B - Math.sqrt(discriminant)) / (2 * A);
+                // Elegir la solución positiva más pequeña
+                const posiblesT = [t1, t2].filter(time => time >= 0);
+                if (posiblesT.length === 0) {
+                    t = 'No hay encuentro en el tiempo positivo';
+                } else {
+                    t = Math.min(...posiblesT);
+                }
+            }
+        }
+
+        // Resetear la tabla de resultados en tiempo real
+        resetRealTimeTable();
+
+        // Mostrar resultados finales
+        let resultHTML = '';
+        if (typeof t === 'number') {
+            // Calcular posiciones y velocidades en el momento del encuentro
+            const pos1 = p1 + v1 * t + 0.5 * a1 * t * t;
+            const pos2 = p2 + v2 * t + 0.5 * a2 * t * t;
+            const vel1 = v1 + a1 * t;
+            const vel2 = v2 + a2 * t;
+
+            resultHTML += `
+                <table>
+                    <tr>
+                        <th>Tiempo de Encuentro (s)</th>
+                        <th>Posición Objeto 1 (m)</th>
+                        <th>Posición Objeto 2 (m)</th>
+                        <th>Velocidad Objeto 1 (m/s)</th>
+                        <th>Velocidad Objeto 2 (m/s)</th>
+                    </tr>
+                    <tr>
+                        <td>${t.toFixed(2)}</td>
+                        <td>${pos1.toFixed(2)}</td>
+                        <td>${pos2.toFixed(2)}</td>
+                        <td>${vel1.toFixed(2)}</td>
+                        <td>${vel2.toFixed(2)}</td>
+                    </tr>
+                </table>
+            `;
+        } else {
+            resultHTML += `<p>${t}</p>`;
+        }
+
+        // Agregar tabla de detalle si el encuentro es posible
+        if (typeof t === 'number') {
+            const distancia1 = v1 * t + 0.5 * a1 * t * t;
+            const distancia2 = v2 * t + 0.5 * a2 * t * t;
+
+            resultHTML += `
+                <h3>Detalle del Movimiento</h3>
+                <table>
+                    <tr>
+                        <th>Objeto</th>
+                        <th>Espacio Recorrido (m)</th>
+                        <th>Velocidad al Encuentro (m/s)</th>
+                    </tr>
+                    <tr>
+                        <td>Objeto 1</td>
+                        <td>${distancia1.toFixed(2)}</td>
+                        <td>${(v1 + a1 * t).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td>Objeto 2</td>
+                        <td>${distancia2.toFixed(2)}</td>
+                        <td>${(v2 + a2 * t).toFixed(2)}</td>
+                    </tr>
+                </table>
+            `;
+
+            // Asignar resultHTML al div 'final-results'
+            document.getElementById('final-results').innerHTML = resultHTML;
+
+            // Preparar variables para la animación
+            encounterTime = t;
+            p1AnimStart = p1;
+            p2AnimStart = p2;
+            v1AnimStart = v1;
+            v2AnimStart = v2;
+            a1Anim = a1;
+            a2Anim = a2;
+
+            // Determinar la posición final de cada objeto
+            const finalPos1 = p1 + v1 * t + 0.5 * a1 * t * t;
+            const finalPos2 = p2 + v2 * t + 0.5 * a2 * t * t;
+            maxDistance = Math.max(finalPos1, finalPos2, p1, p2) + 50; // Agregar margen
+
+            // Actualizar la escala
+            document.getElementById('scale').innerHTML = `
+                <span>0 m</span>
+                <span>${maxDistance.toFixed(2)} m</span>
+            `;
+
+            // Mostrar el área de animación
+            document.getElementById('animation-area').style.display = 'block';
+
+            // Establecer posiciones iniciales en la animación
+            const left1Start = (p1 / maxDistance) * 100;
+            const left2Start = (p2 / maxDistance) * 100;
+            setPosition('object1-anim', left1Start);
+            setPosition('object2-anim', left2Start);
+
+            // Reiniciar variables de animación
+            startTime = null;
+
+            // Inicializar la tabla de resultados en tiempo real
+            updateRealTimeTable(0, 0, 0, v1, v2);
+
+            // Iniciar la animación
+            animationRequest = requestAnimationFrame(animate);
+        } else {
+            // Asignar resultHTML al div 'final-results'
+            document.getElementById('final-results').innerHTML = resultHTML;
+
+            // Ocultar el área de animación si no hay encuentro
+            document.getElementById('animation-area').style.display = 'none';
+            // Limpiar resultados en tiempo real
+            resetRealTimeTable();
+        }
+    }
+
+    // Función para resetear la tabla de resultados en tiempo real
+    function resetRealTimeTable() {
+        document.getElementById('rt-time').innerText = '0.00';
+        document.getElementById('rt-space1').innerText = '0.00';
+        document.getElementById('rt-vel1').innerText = '0.00';
+        document.getElementById('rt-space2').innerText = '0.00';
+        document.getElementById('rt-vel2').innerText = '0.00';
+    }
+
+    // Función de animación
+    function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = (timestamp - startTime) / 1000; // tiempo en segundos
+
+        if (elapsed >= encounterTime) {
+            // Finalizar animación
+            const finalPos1 = calculatePosition(p1AnimStart, v1AnimStart, a1Anim, encounterTime);
+            const finalPos2 = calculatePosition(p2AnimStart, v2AnimStart, a2Anim, encounterTime);
+            setPosition('object1-anim', (finalPos1 / maxDistance) * 100);
+            setPosition('object2-anim', (finalPos2 / maxDistance) * 100);
+
+            // Actualizar la tabla con los valores finales
+            updateRealTimeTable(encounterTime, 
+                (v1AnimStart * encounterTime) + (0.5 * a1Anim * encounterTime * encounterTime), 
+                (v2AnimStart * encounterTime) + (0.5 * a2Anim * encounterTime * encounterTime), 
+                (v1AnimStart + a1Anim * encounterTime), 
+                (v2AnimStart + a2Anim * encounterTime)
+            );
+
+            return;
+        }
+
+        // Calcular posiciones actuales
+        const currentPos1 = calculatePosition(p1AnimStart, v1AnimStart, a1Anim, elapsed);
+        const currentPos2 = calculatePosition(p2AnimStart, v2AnimStart, a2Anim, elapsed);
+
+        // Escalar posiciones a porcentaje para la animación
+        const left1 = (currentPos1 / maxDistance) * 100;
+        const left2 = (currentPos2 / maxDistance) * 100;
+
+        setPosition('object1-anim', left1);
+        setPosition('object2-anim', left2);
+
+        // Calcular velocidades actuales
+        const currentVel1 = v1AnimStart + a1Anim * elapsed;
+        const currentVel2 = v2AnimStart + a2Anim * elapsed;
+
+        // Calcular espacios recorridos hasta el momento
+        const currentSpace1 = v1AnimStart * elapsed + 0.5 * a1Anim * elapsed * elapsed;
+        const currentSpace2 = v2AnimStart * elapsed + 0.5 * a2Anim * elapsed * elapsed;
+
+        // Actualizar la tabla en tiempo real
+        updateRealTimeTable(elapsed, currentSpace1, currentSpace2, currentVel1, currentVel2);
+
+        // Continuar la animación
+        animationRequest = requestAnimationFrame(animate);
+    }
+
+    // Función para calcular posición
+    function calculatePosition(p0, v0, a, t) {
+        return p0 + v0 * t + 0.5 * a * t * t;
+    }
+
+    // Función para establecer posición en porcentaje
+    function setPosition(elementId, position) {
+        // Limitar la posición entre 0% y 100%
+        const clampedPos = Math.max(0, Math.min(100, position));
+        document.getElementById(elementId).style.left = `${clampedPos}%`;
+    }
+
+    // Función para actualizar la tabla de resultados en tiempo real
+    function updateRealTimeTable(elapsedTime, space1, space2, vel1, vel2) {
+        // Actualizar los campos correspondientes en la tabla
+        document.getElementById('rt-time').innerText = elapsedTime.toFixed(2);
+        document.getElementById('rt-space1').innerText = space1.toFixed(2);
+        document.getElementById('rt-vel1').innerText = vel1.toFixed(2);
+        document.getElementById('rt-space2').innerText = space2.toFixed(2);
+        document.getElementById('rt-vel2').innerText = vel2.toFixed(2);
+    }
+</script>
+<script>
+    // ... (tu código JavaScript existente)
+
+    // Añadir esta línea para ejecutar calculate() al cargar la página
+    window.addEventListener('load', calculate);
+</script>
+</body>
+</html>

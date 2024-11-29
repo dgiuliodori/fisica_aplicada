@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculadora DFT Mejorada</title>
+    <!-- Incluye Chart.js y el plugin de zoom -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <!-- Estilos CSS para mejorar la estética -->
+    <style>
+        /* [Estilos CSS anteriores] */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+        }
+        label, select, input, button, textarea {
+            display: block;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        select, input, textarea {
+            padding: 10px;
+            font-size: 1em;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        canvas {
+            background-color: white;
+            border: 1px solid #ccc;
+        }
+        .flex-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-between;
+        }
+        .flex-item {
+            flex: 1 1 48%;
+        }
+        @media (max-width: 768px) {
+            .flex-item {
+                flex: 1 1 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Calculadora de la Transformada Discreta de Fourier</h1>
+        <div>
+            <p><strong>Selecciona un modelo para generar datos sintéticos:</strong></p>
+            <select id="modelo">
+                <option value="seno">Onda Sinusoidal</option>
+                <option value="ruido_blanco">Ruido Blanco</option>
+                <option value="ar1">Modelo AR(1)</option>
+            </select>
+            <label for="numPuntos"><strong>Número de puntos (N):</strong></label>
+            <input type="number" id="numPuntos" value="128" min="1">
+            <label for="parametros"><strong>Parámetros del modelo (separados por comas):</strong></label>
+            <input type="text" id="parametros" placeholder="Onda Sinusoidal: amplitud1, frecuencia1, amplitud2, frecuencia2, ...">
+            <button onclick="generarDatos()">Generar Datos</button>
+        </div>
+        <div>
+            <p><strong>O ingresa tus propios datos separados por comas:</strong></p>
+            <textarea id="inputData" rows="5" placeholder="Ejemplo: 1, 0, -1, 0, 1, 0, -1, 0"></textarea>
+            <button onclick="calcularDFT()">Calcular DFT</button>
+        </div>
+        <h2>Resultados</h2>
+        <div class="flex-container">
+            <div class="flex-item">
+                <h3>Serie Temporal Generada</h3>
+                <canvas id="graficoDatos" width="400" height="300"></canvas>
+            </div>
+            <div class="flex-item">
+                <h3>Magnitud de las Frecuencias</h3>
+                <canvas id="graficoMagnitud" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function generarDatos() {
+            const modelo = document.getElementById('modelo').value;
+            const parametros = document.getElementById('parametros').value.split(',').map(Number).filter(n => !isNaN(n));
+            const N = parseInt(document.getElementById('numPuntos').value) || 128;
+            let data = [];
+
+            if (N <= 0) {
+                alert('El número de puntos (N) debe ser un entero positivo.');
+                return;
+            }
+
+            if (modelo === 'seno') {
+                // Parámetros: amplitud1, frecuencia1, amplitud2, frecuencia2, ...
+                if (parametros.length % 2 !== 0 || parametros.length === 0) {
+                    alert('Por favor, ingresa pares de amplitud y frecuencia para las componentes sinusoidales.');
+                    return;
+                }
+                const numComponentes = parametros.length / 2;
+
+                for (let n = 0; n < N; n++) {
+                    let valor = 0;
+                    for (let i = 0; i < numComponentes; i++) {
+                        const amplitud = parametros[2 * i];
+                        const frecuencia = parametros[2 * i + 1];
+                        if (isNaN(amplitud) || isNaN(frecuencia)) {
+                            alert('Por favor, ingresa valores numéricos para amplitudes y frecuencias.');
+                            return;
+                        }
+                        valor += amplitud * Math.sin(2 * Math.PI * frecuencia * n / N);
+                    }
+                    data.push(valor);
+                }
+            } else if (modelo === 'ruido_blanco') {
+                // Parámetros: media, desviación estándar
+                const media = parametros[0] || 0;
+                const desviacion = parametros[1] || 1;
+
+                for (let n = 0; n < N; n++) {
+                    data.push(media + desviacion * gaussianaAleatoria());
+                }
+            } else if (modelo === 'ar1') {
+                // Parámetros: coeficiente AR (phi), media, desviación estándar
+                const phi = parametros[0] || 0.5;
+                const media = parametros[1] || 0;
+                const desviacion = parametros[2] || 1;
+
+                data[0] = media + desviacion * gaussianaAleatoria();
+                for (let n = 1; n < N; n++) {
+                    data[n] = media + phi * data[n - 1] + desviacion * gaussianaAleatoria();
+                }
+            } else {
+                alert('Modelo no reconocido.');
+                return;
+            }
+
+            document.getElementById('inputData').value = data.join(', ');
+            graficarDatos(data);
+            calcularDFT();
+        }
+
+        function calcularDFT() {
+            const inputData = document.getElementById('inputData').value;
+            const data = inputData.split(',').map(Number).filter(n => !isNaN(n));
+
+            // Validación de datos
+            if (!validarDatos(data)) {
+                alert('Por favor, ingresa únicamente números separados por comas.');
+                return;
+            }
+
+            const N = data.length;
+            let real = new Array(N).fill(0);
+            let imag = new Array(N).fill(0);
+
+            // Cálculo de la DFT
+            for (let k = 0; k < N; k++) {
+                for (let n = 0; n < N; n++) {
+                    const angle = (2 * Math.PI * k * n) / N;
+                    real[k] += data[n] * Math.cos(angle);
+                    imag[k] -= data[n] * Math.sin(angle);
+                }
+            }
+
+            // Cálculo de la magnitud
+            let magnitudes = [];
+            const halfN = Math.floor(N / 2);
+            for (let k = 0; k <= halfN; k++) {
+                magnitudes[k] = Math.sqrt(real[k] ** 2 + imag[k] ** 2);
+            }
+
+            mostrarGrafico(magnitudes, N);
+        }
+
+        function validarDatos(data) {
+            return data.every(num => !isNaN(num));
+        }
+
+        function mostrarGrafico(magnitudes, N) {
+            const ctx = document.getElementById('graficoMagnitud').getContext('2d');
+            const labels = magnitudes.map((_, index) => index * (1 / N));
+
+            // Destruir gráfico previo si existe
+            if (window.magnitudChart) {
+                window.magnitudChart.destroy();
+            }
+
+            window.magnitudChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Magnitud de las frecuencias',
+                        data: magnitudes,
+                        borderColor: 'rgba(231, 76, 60, 1)',
+                        backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Frecuencia Normalizada (k/N)'
+                            }
+                        },
+                        y: {
+                            type: 'logarithmic',
+                            title: {
+                                display: true,
+                                text: 'Magnitud (Escala Logarítmica)'
+                            },
+                            min: 1e-3 // Evita problemas con cero en escala logarítmica
+                        }
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function graficarDatos(data) {
+            const ctx = document.getElementById('graficoDatos').getContext('2d');
+            const labels = data.map((_, index) => index);
+
+            // Destruir gráfico previo si existe
+            if (window.datosChart) {
+                window.datosChart.destroy();
+            }
+
+            window.datosChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Datos Generados',
+                        data: data,
+                        borderColor: 'rgba(52, 152, 219, 1)',
+                        backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Tiempo (n)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Amplitud'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function gaussianaAleatoria() {
+            // Genera un número aleatorio con distribución normal (media=0, desviación estándar=1)
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random(); // Convertir [0,1) a (0,1)
+            while(v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+    </script>
+</body>
+</html>

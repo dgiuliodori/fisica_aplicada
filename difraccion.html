@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulación de Difracción de una Rendija Única</title>
+    <!-- Incluir MathJax para renderizar fórmulas en LaTeX -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f8ff;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .controls {
+            max-width: 300px;
+            margin: 20px;
+            padding: 15px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .controls label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .controls input {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            background-color: #fff;
+            margin: 20px;
+        }
+        .description {
+            max-width: 800px;
+            margin: 20px;
+            padding: 15px;
+            background-color: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 8px;
+        }
+        .description h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Simulación de Difracción de una Rendija Única</h1>
+
+    <div class="container">
+        <div class="controls">
+            <label for="slitWidth">Ancho de la Rendija (a) [micrómetros]:</label>
+            <input type="range" id="slitWidth" min="10" max="100" value="50" step="1">
+            <span id="slitWidthValue">50</span> μm
+
+            <label for="wavelength">Longitud de Onda (λ) [nanómetros]:</label>
+            <input type="range" id="wavelength" min="400" max="700" value="550" step="1">
+            <span id="wavelengthValue">550</span> nm
+
+            <label for="distance">Distancia a la Pantalla (D) [metros]:</label>
+            <input type="range" id="distance" min="0.5" max="5" value="2" step="0.1">
+            <span id="distanceValue">2</span> m
+        </div>
+
+        <canvas id="diffractionCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <div class="description">
+        <h2>Descripción</h2>
+        <p>
+            Esta simulación muestra el patrón de difracción de una rendija única. Al ajustar los parámetros como el ancho de la rendija, la longitud de onda de la luz y la distancia a la pantalla, puedes observar cómo varía el patrón de interferencia.
+        </p>
+        <p>
+            <strong>Ancho de la Rendija (a):</strong> Controla el tamaño de la rendija por la cual pasa la luz. Un ancho menor resulta en un patrón de difracción más amplio.
+        </p>
+        <p>
+            <strong>Longitud de Onda (λ):</strong> Representa la longitud de onda de la luz utilizada. Diferentes colores de luz tendrán diferentes longitudes de onda, afectando el patrón de difracción.
+        </p>
+        <p>
+            <strong>Distancia a la Pantalla (D):</strong> Es la distancia desde la rendija hasta la pantalla donde se observa el patrón de difracción. A mayor distancia, el patrón se extiende más.
+        </p>
+        <h2>Fundamentos Teóricos</h2>
+        <p>
+            El patrón de difracción de una rendija única se puede describir mediante la siguiente fórmula de intensidad:
+        </p>
+        <p style="text-align: center;">
+            \[
+            I(\theta) = I_0 \left( \frac{\sin \beta}{\beta} \right)^2
+            \]
+        </p>
+        <p>
+            donde:
+        </p>
+        <ul>
+            <li><strong>\(I(\theta)\):</strong> Intensidad de la luz en un ángulo \(\theta\).</li>
+            <li><strong>\(I_0\):</strong> Intensidad máxima en el centro del patrón.</li>
+            <li><strong>\(\beta\):</strong> Parámetro dado por:
+                \[
+                \beta = \frac{\pi a \sin \theta}{\lambda}
+                \]
+            </li>
+        </ul>
+        <p>
+            Para ángulos pequeños, se puede aproximar \(\sin \theta \approx \tan \theta \approx \theta\) (en radianes), lo que simplifica los cálculos.
+        </p>
+        <p>
+            Los **mínimos** en el patrón de difracción ocurren cuando:
+        </p>
+        <p style="text-align: center;">
+            \[
+            a \sin \theta = m \lambda \quad \text{donde} \quad m = \pm1, \pm2, \pm3, \ldots
+            \]
+        </p>
+        <p>
+            La posición de los mínimos en la pantalla, a una distancia \(D\) de la rendija, se puede calcular como:
+        </p>
+        <p style="text-align: center;">
+            \[
+            y_m = D \tan \theta \approx D \sin \theta = \frac{m \lambda D}{a}
+            \]
+        </p>
+        <p>
+            Estas fórmulas explican cómo varían los patrones de difracción en función de los parámetros ajustables en la simulación.
+        </p>
+    </div>
+
+    <script>
+        // Obtener elementos del DOM
+        const slitWidthSlider = document.getElementById('slitWidth');
+        const wavelengthSlider = document.getElementById('wavelength');
+        const distanceSlider = document.getElementById('distance');
+        const slitWidthValue = document.getElementById('slitWidthValue');
+        const wavelengthValue = document.getElementById('wavelengthValue');
+        const distanceValue = document.getElementById('distanceValue');
+        const canvas = document.getElementById('diffractionCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Inicializar valores
+        let slitWidth = parseFloat(slitWidthSlider.value) * 1e-6; // Convertir a metros
+        let wavelength = parseFloat(wavelengthSlider.value) * 1e-9; // Convertir a metros
+        let distance = parseFloat(distanceSlider.value); // en metros
+
+        // Actualizar los valores mostrados
+        function updateValues() {
+            slitWidth = parseFloat(slitWidthSlider.value) * 1e-6;
+            wavelength = parseFloat(wavelengthSlider.value) * 1e-9;
+            distance = parseFloat(distanceSlider.value);
+            slitWidthValue.textContent = slitWidthSlider.value;
+            wavelengthValue.textContent = wavelengthSlider.value;
+            distanceValue.textContent = distanceSlider.value;
+        }
+
+        // Función para dibujar el patrón de difracción
+        function drawDiffractionPattern() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Parámetros del canvas
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const centerY = canvasHeight / 2;
+
+            // Definir el rango físico en metros que el canvas representa
+            const Y_max = 0.1; // 10 cm a cada lado
+            const scale = Y_max / (canvasWidth / 2); // metros por pixel
+
+            // Número de puntos a calcular
+            const numPoints = canvasWidth;
+
+            // Intensidad máxima
+            let maxIntensity = 0;
+
+            // Array para almacenar intensidades
+            let intensities = [];
+
+            for (let x = 0; x < numPoints; x++) {
+                // Posición en la pantalla (y) en metros
+                let y = (x - numPoints / 2) * scale;
+
+                // Cálculo de β
+                let beta = (Math.PI * slitWidth * y) / (wavelength * distance);
+
+                // Evitar división por cero
+                let intensity;
+                if (beta === 0) {
+                    intensity = 1;
+                } else {
+                    intensity = Math.pow(Math.sin(beta) / beta, 2);
+                }
+
+                // Normalizar la intensidad
+                intensities.push(intensity);
+                if (intensity > maxIntensity) {
+                    maxIntensity = intensity;
+                }
+            }
+
+            // Dibujar el patrón
+            ctx.beginPath();
+            for (let x = 0; x < numPoints; x++) {
+                let intensity = intensities[x] / maxIntensity;
+                // Escalar la intensidad para la altura en el canvas
+                let height = intensity * (canvasHeight / 2) * 0.9;
+                // Establecer el color basado en la intensidad
+                let brightness = Math.floor(intensity * 255);
+                ctx.strokeStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
+                ctx.lineTo(x, centerY - height);
+            }
+            ctx.stroke();
+
+            // Dibujar líneas guía
+            ctx.strokeStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.moveTo(numPoints / 2, 0);
+            ctx.lineTo(numPoints / 2, canvasHeight);
+            ctx.stroke();
+
+            // Etiquetas
+            ctx.fillStyle = '#000';
+            ctx.font = '14px Arial';
+            ctx.fillText('Centro', numPoints / 2 + 5, 20);
+        }
+
+        // Evento para actualizar los valores y dibujar el patrón en tiempo real
+        function handleInputChange() {
+            updateValues();
+            drawDiffractionPattern();
+        }
+
+        // Añadir eventos a los sliders para actualización en tiempo real
+        slitWidthSlider.addEventListener('input', handleInputChange);
+        wavelengthSlider.addEventListener('input', handleInputChange);
+        distanceSlider.addEventListener('input', handleInputChange);
+
+        // Inicializar valores mostrados
+        slitWidthValue.textContent = slitWidthSlider.value;
+        wavelengthValue.textContent = wavelengthSlider.value;
+        distanceValue.textContent = distanceSlider.value;
+
+        // Dibujar el patrón inicial
+        drawDiffractionPattern();
+    </script>
+
+</body>
+</html>

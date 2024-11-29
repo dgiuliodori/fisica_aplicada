@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Aplicada</title>
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <!-- Incluir Plotly.js -->
+    <script src="js_lib/plotly-latest.min.js"></script>
+    <!-- Incluir math.js -->
+    <script src="js_lib/math.min.js"></script>
+    <script src="js/menuData.js"></script>
+    <script src="js/generarMenu.js"></script>
+    <script id="MathJax-script" async
+            src="js_lib//tex-mml-chtml.js">
+    </script>
+    <style>
+        /* Importar fuentes de Google */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+/* 
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #e0f7fa;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #004d40;
+        } */
+/* 
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .inputs, .results, .canvas-container {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            flex: 1 1 300px;
+        }
+
+        .inputs {
+            max-width: 350px;
+        }
+
+        .inputs label {
+            display: block;
+            margin: 15px 0 5px;
+            font-weight: 500;
+            color: #00695c;
+        }
+
+        .inputs input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #b2dfdb;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .inputs input:focus {
+            border-color: #004d40;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0,77,64,0.3);
+        }
+
+        .inputs button {
+            margin-top: 20px;
+            padding: 12px;
+            width: 100%;
+            background-color: #00796b;
+            border: none;
+            color: #ffffff;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .inputs button:hover {
+            background-color: #004d40;
+            transform: translateY(-2px);
+        }
+
+        /* Nuevo estilo para el botón secundario */
+        /* .inputs .button-secondary {
+            background-color: #0288d1;
+            margin-top: 10px;
+        }
+
+        .inputs .button-secondary:hover {
+            background-color: #01579b;
+            transform: translateY(-2px);
+        } */ 
+/* 
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        table thead {
+            background-color: #b2dfdb;
+        }
+
+        table th, table td {
+            padding: 12px 15px;
+            text-align: center;
+            border: 1px solid #e0f2f1;
+        }
+
+        table tbody tr:nth-child(even) {
+            background-color: #f1f8e9;
+        } */
+
+        .equilibrio, .no-equilibrio {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .equilibrio {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+
+        .no-equilibrio {
+            background-color: #ffcdd2;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+
+        /* Leyenda de colores */
+        .leyenda {
+            margin-top: 20px;
+            text-align: left;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .leyenda div {
+            display: flex;
+            align-items: center;
+            margin: 5px 10px;
+        }
+
+        .leyenda div span {
+            display: inline-block;
+            width: 18px;
+            height: 10px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+
+        .leyenda .P { background-color: #d32f2f; }
+        .leyenda .Px { background-color: #f57c00; }
+        .leyenda .Py { background-color: #388e3c; }
+        .leyenda .N { background-color: #7b1fa2; }
+        .leyenda .f { background-color: #1976d2; }
+        .leyenda .Fa { background-color: #c2185b; }
+        .leyenda .F { background-color: #000000; }
+
+        /* Canvas container */
+        .canvas-container {
+            position: relative;
+            max-width: 600px;
+        }
+
+        canvas {
+            border: 2px solid #b2dfdb;
+            border-radius: 10px;
+            background-color: #e0f7fa;
+        }
+
+        /* Responsive ajustes */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .inputs, .results, .canvas-container {
+                width: 100%;
+                max-width: 500px;
+            }
+        }
+
+        /* Transiciones suaves para la leyenda */
+        .leyenda div:hover span {
+            transform: scale(1.2);
+            transition: transform 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Fuerzas en Plano Inclinado</h1>
+    </header>
+    <nav>
+        <!-- Navegación opcional -->
+    </nav>
+    <div class="parametros">
+        <aside id="sidebar">
+            <h2>Parámetros</h2>
+            <div class="slider-container">
+                <label for="angulo">Ángulo del Plano Inclinado (°):</label>
+                <input type="number" id="angulo" value="30" min="0" max="90" step="0.1">
+            </div>
+            <div class="slider-container">
+                <label for="masa">Masa del Objeto (kg):</label>
+                <input type="number" id="masa" value="5" min="0" step="0.1">
+            </div>
+            <div class="slider-container">
+                <label for="coefFriccion">Coeficiente de Fricción (μ):</label>
+                <input type="number" id="coefFriccion" value="0.3" min="0" step="0.01">
+            </div>
+            <div class="slider-container">
+                <label for="aceleracion">Aceleración (m/s²):</label>
+                <input type="number" id="aceleracion" value="0" step="0.1">
+            </div>
+            <div class="slider-container">
+                <button id="calcularFuerzas">Calcular Fuerzas</button>
+            </div>
+            <div class="slider-container">
+                <button id="calcularAceleracion" class="button-secondary">Calcular Aceleración para Equilibrio</button>
+            </div>
+                <div id="mensajeEquilibrio"></div>
+    </aside>
+</div>
+<main id="content"> 
+    <h2>Resultados</h2>
+        <div class="resultado">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fuerza</th>
+                        <th>Magnitud (N)</th>
+                        <th>Dirección</th>
+                    </tr>
+                </thead>
+                <tbody id="resultadosTabla">
+                    <!-- Resultados se insertarán aquí -->
+                </tbody>
+            </table>
+        </div>
+        <div class="canvas-container">
+            <h2>Visualización de Fuerzas</h2>
+            <canvas id="fuerzasCanvas" width="700px" height="600px"></canvas>
+        </div>
+            <div class="leyenda">    
+                <div><span class="P"></span> Peso (P)</div>
+                <div><span class="Px"></span> Componente Paralela (Pₓ)</div>
+                <div><span class="Py"></span> Componente Perpendicular (Pᵧ)</div>
+                <div><span class="N"></span> Fuerza Normal (N)</div>
+                <div><span class="f"></span> Fuerza de Rozamiento (f)</div>
+                <div><span class="Fa"></span> Fuerza m*a (F<sub>a</sub>)</div>
+                <div><span class="F"></span> Fuerza Resultante (F)</div>
+            </div>
+    </div>
+</main>
+<br>
+<footer>
+    &copy; 2024 Física Aplicada - dgiuliodori@unc.edu.ar 
+</footer>
+    <script>
+        function calcularFuerzas() {
+            // Obtener valores de entrada
+            const anguloInput = document.getElementById('angulo');
+            const masaInput = document.getElementById('masa');
+            const coefFriccionInput = document.getElementById('coefFriccion');
+            const aceleracionInput = document.getElementById('aceleracion');
+
+            const angulo = parseFloat(anguloInput.value);
+            const masa = parseFloat(masaInput.value);
+            const mu = parseFloat(coefFriccionInput.value);
+            const a = parseFloat(aceleracionInput.value);
+
+            // Validación de entradas
+            if (angulo < 0 || angulo > 90) {
+                alert('Por favor, ingresa un ángulo entre 0° y 90°.');
+                return;
+            }
+            if (masa <= 0) {
+                alert('La masa debe ser un valor positivo.');
+                return;
+            }
+            if (mu < 0) {
+                alert('El coeficiente de fricción no puede ser negativo.');
+                return;
+            }
+
+            // Constante de gravedad
+            const g = 9.81; // m/s²
+
+            // Cálculos
+            const peso = masa * g;
+            const peso_paralelo = peso * Math.sin(angulo * Math.PI / 180);
+            const peso_perpendicular = peso * Math.cos(angulo * Math.PI / 180);
+            const normal = peso_perpendicular;
+            const friccion = mu * normal;
+            const fuerza_ma = masa * a; // Fuerza adicional F = m * a
+
+            // Cálculo de las fuerzas totales
+            // Sumatoria en X: -P_x + f + F_a = m * a
+            const fuerza_total_paralela = -peso_paralelo + friccion + fuerza_ma;
+
+            // Sumatoria en Y: N - P_y = 0 (no hay aceleración en Y)
+            const fuerza_total_perpendicular = normal - peso_perpendicular; // Siempre 0
+
+            // Verificar equilibrio
+            const tolerancia = 1e-1;
+            const equilibrio = Math.abs(fuerza_total_paralela) < tolerancia && Math.abs(fuerza_total_perpendicular) < tolerancia;
+
+            // Actualizar la tabla de resultados
+            const direccionFa = a >= 0 ? 'A lo largo del plano hacia abajo' : 'A lo largo del plano hacia arriba';
+            const resultados = [
+                { nombre: 'Peso (P)', magnitud: peso.toFixed(2), direccion: 'Vertical hacia abajo' },
+                { nombre: 'Componente Paralela (Pₓ)', magnitud: peso_paralelo.toFixed(2), direccion: `A lo largo del plano (${angulo}°) hacia abajo` },
+                { nombre: 'Componente Perpendicular (Pᵧ)', magnitud: peso_perpendicular.toFixed(2), direccion: 'Perpendicular al plano' },
+                { nombre: 'Fuerza Normal (N)', magnitud: normal.toFixed(2), direccion: 'Perpendicular al plano hacia arriba' },
+                { nombre: 'Fuerza de Rozamiento (f)', magnitud: friccion.toFixed(2), direccion: 'A lo largo del plano hacia arriba' },
+                { nombre: 'Fuerza m*a (Fₐ)', magnitud: fuerza_ma.toFixed(2), direccion: direccionFa },
+                { nombre: 'Fuerza Resultante en X (ΣFₓ)', magnitud: fuerza_total_paralela.toFixed(2), direccion: 'A lo largo del plano' },
+                { nombre: 'Fuerza Resultante en Y (ΣFᵧ)', magnitud: fuerza_total_perpendicular.toFixed(2), direccion: 'Perpendicular al plano' }
+            ];
+
+            let tablaHTML = '';
+            resultados.forEach(fuerza => {
+                tablaHTML += `<tr>
+                                <td>${fuerza.nombre}</td>
+                                <td>${fuerza.magnitud}</td>
+                                <td>${fuerza.direccion}</td>
+                              </tr>`;
+            });
+            document.getElementById('resultadosTabla').innerHTML = tablaHTML;
+
+            // Mostrar mensaje de equilibrio
+            const mensaje = document.getElementById('mensajeEquilibrio');
+
+            if (equilibrio) {
+                mensaje.innerHTML = `<div class="equilibrio"><strong>¡El objeto está en equilibrio estático!</strong></div>`;
+            } else {
+                mensaje.innerHTML = `<div class="no-equilibrio"><strong>El objeto NO está en equilibrio estático.</strong></div>`;
+            }
+            
+            // Dibujar en el canvas
+            dibujarFuerzas(angulo, peso, peso_paralelo, peso_perpendicular, normal, friccion, fuerza_ma, fuerza_total_paralela, fuerza_total_perpendicular, equilibrio);
+        }
+
+        function calcularAceleracionEquilibrio() {
+            const masa = parseFloat(document.getElementById('masa').value);
+            const angulo = parseFloat(document.getElementById('angulo').value);
+            const mu = parseFloat(document.getElementById('coefFriccion').value);
+
+            const g = 9.81;
+            const P_x = masa * g * Math.sin(angulo * Math.PI / 180);
+            const P_y = masa * g * Math.cos(angulo * Math.PI / 180);
+            const f = mu * P_y;
+
+            // Para equilibrio: ΣFₓ = 0 => -P_x + f + F_a = 0 => F_a = P_x - f
+            const F_a = P_x - f;
+
+            // F_a = m * a => a = F_a / m
+            const a = F_a / masa;
+
+            document.getElementById('aceleracion').value = a.toFixed(4);
+            calcularFuerzas();
+        }
+
+        function dibujarFuerzas(angulo, peso, P_x, P_y, N, f, Fa, sumFx, sumFy, equilibrio) {
+            const canvas = document.getElementById('fuerzasCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Configuración inicial
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2 + 100; // Ajuste para mejor visualización
+
+            // Recolectar todas las fuerzas para determinar la escala
+            let fuerzas = [
+                { magnitud: peso, color: '#d32f2f', etiqueta: 'P' },
+                { magnitud: Math.abs(P_x), color: '#f57c00', etiqueta: 'Pₓ' },
+                { magnitud: Math.abs(P_y), color: '#388e3c', etiqueta: 'Pᵧ' },
+                { magnitud: Math.abs(N), color: '#7b1fa2', etiqueta: 'N' },
+                { magnitud: Math.abs(f), color: '#1976d2', etiqueta: 'f' }
+            ];
+
+            // Agregar la fuerza m*a (Fₐ)
+            if (Fa !== 0) {
+                fuerzas.push({ magnitud: Math.abs(Fa), color: '#c2185b', etiqueta: 'Fₐ' });
+            }
+
+            // Agregar la fuerza resultante si no está en equilibrio
+            if (!equilibrio) {
+                const F_magnitud = Math.sqrt(sumFx**2 + sumFy**2);
+                fuerzas.push({ magnitud: F_magnitud, color: '#000000', etiqueta: 'F' });
+            }
+
+            // Determinar la magnitud máxima
+            const maxFuerza = Math.max(...fuerzas.map(f => f.magnitud));
+            const margen = 100; // Margen para evitar que los vectores toquen los bordes
+            const escala = (Math.min(canvas.width, canvas.height) / 2 - margen) / maxFuerza;
+
+            // Guardar el estado inicial del canvas
+            ctx.save();
+
+            // Rotar el canvas para que el eje X sea paralelo al plano inclinado
+            const anguloRad = angulo * Math.PI / 180;
+            ctx.translate(centerX, centerY);
+            ctx.rotate(-anguloRad); // Rotar en sentido contrario para alinear el plano inclinado con el eje X
+
+            // Dibujar plano inclinado
+            ctx.beginPath();
+            ctx.moveTo(-300, 0);
+            ctx.lineTo(300, 0);
+            ctx.strokeStyle = '#004d40';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Dibujar objeto
+            ctx.fillStyle = '#00796b';
+            ctx.fillRect(-15, -15, 30, 30);
+
+            // Dibujar ejes
+            // Eje X (paralelo al plano)
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(100, 0);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.fillStyle = '#000';
+            ctx.font = '16px Roboto';
+            ctx.fillText('X', 105, -5);
+
+            // Eje Y (perpendicular al plano)
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, -100);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.fillText('Y', 5, -105);
+
+            // Función para dibujar vectores
+            function dibujarVector(magnitud, anguloVector, color, etiqueta) {
+                const endX = magnitud * Math.cos(anguloVector) * escala;
+                const endY = magnitud * Math.sin(anguloVector) * escala;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                // Dibujar flecha
+                const angle = anguloVector;
+                const arrowLength = 10;
+                ctx.beginPath();
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(endX - arrowLength * Math.cos(angle - Math.PI / 6), endY - arrowLength * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(endX - arrowLength * Math.cos(angle + Math.PI / 6), endY - arrowLength * Math.sin(angle + Math.PI / 6));
+                ctx.lineTo(endX, endY);
+                ctx.fillStyle = color;
+                ctx.fill();
+                // Etiqueta
+                ctx.fillStyle = '#000';
+                ctx.font = '14px Roboto';
+                ctx.fillText(etiqueta, endX + 5, endY - 5);
+            }
+
+            // Dibujar fuerzas
+            // 1. Peso (P) - Vertical hacia abajo (en el sistema rotado)
+            const pesoAngulo = Math.PI / 2 + anguloRad; // Dirección vertical hacia abajo en el sistema rotado
+            dibujarVector(peso, pesoAngulo, '#d32f2f', 'P');
+
+            // 2. Componente Paralela (Pₓ) - A lo largo del eje X hacia abajo
+            dibujarVector(P_x, Math.PI, '#f57c00', 'Pₓ');
+
+            // 3. Componente Perpendicular (Pᵧ) - A lo largo del eje Y negativo
+            dibujarVector(P_y, Math.PI / 2, '#388e3c', 'Pᵧ');
+
+            // 4. Fuerza Normal (N) - Opuesta a Pᵧ
+            dibujarVector(N, -Math.PI / 2, '#7b1fa2', 'N');
+
+            // 5. Fuerza de Rozamiento (f) - A lo largo del eje X hacia arriba
+            dibujarVector(f, 0, '#1976d2', 'f');
+
+            // 6. Fuerza m*a (Fₐ) - Dirección depende del signo de a
+            if (Fa !== 0) {
+                const direccionFa = Fa >= 0 ? 0 : Math.PI; // Si Fa >=0, hacia abajo; si Fa <0, hacia arriba
+                dibujarVector(Fa, direccionFa, '#c2185b', 'Fₐ');
+            }
+
+            // // 7. Fuerza Resultante (F) - Solo si no está en equilibrio
+            // if (!equilibrio) {
+            //     const F_magnitud = Math.sqrt(sumFx**2 + sumFy**2);
+            //     const F_ang = Math.atan2(sumFy, sumFx);
+            //     dibujarVector(F_magnitud, F_ang, '#000000', 'F');
+            // }
+
+            // Restaurar el estado del canvas
+            ctx.restore();
+
+            // Dibujar sumatorias de fuerzas fuera del sistema rotado
+            ctx.save();
+            ctx.font = '18px Roboto';
+            if (equilibrio) {
+                ctx.fillStyle = '#2e7d32';
+                ctx.fillText('ΣFₓ = 0 N', centerX - 350, centerY - 200);
+                ctx.fillText('ΣFᵧ = 0 N', centerX - 350, centerY - 170);
+            } else {
+                ctx.fillStyle = '#c62828';
+                ctx.fillText(`ΣFₓ = ${sumFx.toFixed(2)} N`, centerX - 350, centerY - 200);
+                ctx.fillText(`ΣFᵧ = ${sumFy.toFixed(2)} N`, centerX - 350, centerY - 170);
+            }
+            ctx.restore();
+        }
+
+        // Event listeners para los botones
+        document.getElementById('calcularFuerzas').addEventListener('click', calcularFuerzas);
+        document.getElementById('calcularAceleracion').addEventListener('click', calcularAceleracionEquilibrio);
+
+        // Calcular al cargar la página
+        window.onload = calcularFuerzas;
+    </script>
+</body>
+</html>

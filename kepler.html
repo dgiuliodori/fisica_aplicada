@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tres Leyes de Kepler - Interactivo Mejorado</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        header {
+            background-color: #1f1f1f;
+            width: 100%;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2em;
+            color: #00bcd4;
+        }
+        main {
+            padding: 20px;
+            width: 90%;
+            max-width: 1600px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        section {
+            background-color: #1f1f1f;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex: 1 1 500px;
+            max-width: 600px;
+        }
+        section h2 {
+            margin-top: 0;
+            color: #00bcd4;
+            text-align: center;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .controls label {
+            display: block;
+            margin: 10px 0 5px;
+            color: #ffffff;
+        }
+        .controls input[type="range"],
+        .controls input[type="number"] {
+            width: 100%;
+        }
+        .controls span {
+            float: right;
+            color: #ff9800;
+            font-weight: bold;
+        }
+        canvas {
+            border: 2px solid #00bcd4;
+            display: block;
+            margin: 0 auto;
+            background-color: #000000;
+            border-radius: 10px;
+        }
+        #periodPlot {
+            background-color: #1f1f1f;
+        }
+        @media (max-width: 768px) {
+            main {
+                flex-direction: column;
+                align-items: center;
+            }
+            section {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Tres Leyes de Kepler</h1>
+    </header>
+    <main>
+        <!-- Ley 1: Ley de las Órbitas Elípticas -->
+        <section id="ley1">
+            <h2>Ley 1: Órbitas Elípticas</h2>
+            <div class="controls">
+                <label for="semiMajor1">Semieje Mayor (a):
+                    <span id="semiMajor1Value">150</span>
+                </label>
+                <input type="range" id="semiMajor1" min="50" max="300" value="150">
+                
+                <label for="eccentricity1">Excentricidad (e):
+                    <span id="eccentricity1Value">0.30</span>
+                </label>
+                <input type="range" id="eccentricity1" min="0" max="0.8" step="0.01" value="0.3">
+                
+                <label for="speed1">Velocidad Orbital:
+                    <span id="speed1Value">1.0</span>
+                </label>
+                <input type="range" id="speed1" min="0.1" max="5" step="0.1" value="1">
+            </div>
+            <canvas id="canvas1" width="500" height="500"></canvas>
+        </section>
+
+        <!-- Ley 2: Ley de Áreas Iguales en Tiempos Iguales -->
+        <section id="ley2">
+            <h2>Ley 2: Áreas Iguales en Tiempos Iguales</h2>
+            <div class="controls">
+                <label for="semiMajor2">Semieje Mayor (a):
+                    <span id="semiMajor2Value">150</span>
+                </label>
+                <input type="range" id="semiMajor2" min="50" max="300" value="150">
+                
+                <label for="eccentricity2">Excentricidad (e):
+                    <span id="eccentricity2Value">0.30</span>
+                </label>
+                <input type="range" id="eccentricity2" min="0" max="0.8" step="0.01" value="0.3">
+                
+                <label for="speed2">Velocidad Orbital:
+                    <span id="speed2Value">1.0</span>
+                </label>
+                <input type="range" id="speed2" min="0.1" max="5" step="0.1" value="1">
+                
+                <label for="areaScale">Escala del Área:
+                    <span id="areaScaleValue">3</span>
+                </label>
+                <input type="range" id="areaScale" min="1" max="5" step="1" value="3">
+            </div>
+            <canvas id="canvas2" width="500" height="500"></canvas>
+        </section>
+
+        <!-- Ley 3: Período Armónico -->
+        <section id="ley3">
+            <h2>Ley 3: Período Armónico</h2>
+            <div class="controls">
+                <label for="plotPoints">Número de Puntos:
+                    <span id="plotPointsValue">10</span>
+                </label>
+                <input type="number" id="plotPoints" min="2" max="20" value="10">
+                
+                <label for="scaleFactor">Factor de Escala:
+                    <span id="scaleFactorValue">1.0</span>
+                </label>
+                <input type="range" id="scaleFactor" min="0.5" max="2" step="0.1" value="1">
+            </div>
+            <canvas id="periodPlot" width="700" height="500"></canvas>
+        </section>
+    </main>
+
+    <script>
+        // Función para resolver la ecuación de Kepler usando el método de Newton-Raphson
+        function solveKepler(M, e, tolerance = 1e-6) {
+            let E = M;
+            let delta = 1;
+            while (Math.abs(delta) > tolerance) {
+                delta = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+                E -= delta;
+            }
+            return E;
+        }
+
+        // Función para calcular el factor de escala para que la órbita quepa dentro del canvas
+        function calculateScale(a, e, canvasWidth, canvasHeight, margin) {
+            const maxAllowedWidth = (canvasWidth / 2) - margin;
+            const maxAllowedHeight = (canvasHeight / 2) - margin;
+            const requiredWidth = a * (1 + e);
+            const requiredHeight = a * Math.sqrt(1 - e * e);
+            const scaleX = requiredWidth > maxAllowedWidth ? maxAllowedWidth / requiredWidth : 1;
+            const scaleY = requiredHeight > maxAllowedHeight ? maxAllowedHeight / requiredHeight : 1;
+            return Math.min(scaleX, scaleY, 1); // No aumentar el tamaño
+        }
+
+        // Ley 1: Órbitas Elípticas con Animación (velocidad variable)
+        const canvas1 = document.getElementById('canvas1');
+        const ctx1 = canvas1.getContext('2d');
+        const semiMajorInput1 = document.getElementById('semiMajor1');
+        const semiMajorValue1 = document.getElementById('semiMajor1Value');
+        const eccentricityInput1 = document.getElementById('eccentricity1');
+        const eccentricityValue1 = document.getElementById('eccentricity1Value');
+        const speedInput1 = document.getElementById('speed1');
+        const speedValue1 = document.getElementById('speed1Value');
+
+        let lastTime1 = null;
+        let meanAnomaly1 = 0;
+        let E1 = 0; // Anomalía excéntrica inicial
+        let theta1 = 0; // Anomalía verdadera inicial
+        let ellipseArea1 = 0;
+        let areaPerSecond1 = 0; // Área barrida por segundo
+
+        function drawLey1(deltaTime) {
+            const a = parseFloat(semiMajorInput1.value);
+            const e = parseFloat(eccentricityInput1.value);
+            const speed = parseFloat(speedInput1.value);
+            semiMajorValue1.textContent = a;
+            eccentricityValue1.textContent = e.toFixed(2);
+            speedValue1.textContent = speed.toFixed(1);
+
+            const margin = 50;
+            const scale = calculateScale(a, e, canvas1.width, canvas1.height, margin);
+
+            const scaledA = a * scale;
+            const scaledB = scaledA * Math.sqrt(1 - e * e);
+            const scaledC = scaledA * e;
+
+            const centerX = canvas1.width / 2;
+            const centerY = canvas1.height / 2;
+            const ellipseCenterX = centerX - scaledC; // Ajustar el centro de la elipse
+
+            ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+
+            // Dibujar el sol en el foco
+            ctx1.fillStyle = '#ffeb3b'; // Color amarillo más brillante
+            ctx1.beginPath();
+            ctx1.arc(centerX, centerY, 15, 0, 2 * Math.PI);
+            ctx1.fill();
+
+            // Dibujar la órbita elíptica
+            ctx1.strokeStyle = '#00bcd4'; // Color azul claro
+            ctx1.lineWidth = 2;
+            ctx1.beginPath();
+            ctx1.ellipse(ellipseCenterX, centerY, scaledA, scaledB, 0, 0, 2 * Math.PI);
+            ctx1.stroke();
+
+            // Calcular el área total de la elipse
+            ellipseArea1 = Math.PI * scaledA * scaledB;
+
+            // Calcular el área barrida por segundo
+            areaPerSecond1 = (speed * ellipseArea1) / (2 * Math.PI); // Ajusta speed para controlar la velocidad
+
+            // Incrementar la anomalía media basada en el área barrida
+            const dA = areaPerSecond1 * deltaTime;
+            meanAnomaly1 += dA / ellipseArea1 * 2 * Math.PI; // Convertir área a anomalía media
+            meanAnomaly1 %= 2 * Math.PI;
+
+            // Resolver Kepler para obtener la anomalía excéntrica E
+            E1 = solveKepler(meanAnomaly1, e);
+
+            // Calcular la anomalía verdadera theta
+            theta1 = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E1 / 2), Math.sqrt(1 - e) * Math.cos(E1 / 2));
+
+            // Calcular la posición del planeta
+            const x1 = ellipseCenterX + scaledA * Math.cos(theta1);
+            const y1 = centerY + scaledB * Math.sin(theta1);
+
+            // Dibujar el planeta
+            ctx1.fillStyle = '#03a9f4'; // Color azul
+            ctx1.beginPath();
+            ctx1.arc(x1, y1, 10, 0, 2 * Math.PI);
+            ctx1.fill();
+        }
+
+        function animateLey1(timestamp) {
+            if (!lastTime1) lastTime1 = timestamp;
+            const delta = (timestamp - lastTime1) / 1000; // en segundos
+            lastTime1 = timestamp;
+
+            drawLey1(delta);
+            requestAnimationFrame(animateLey1);
+        }
+
+        semiMajorInput1.addEventListener('input', () => {
+            meanAnomaly1 = 0; // Reiniciar la animación al cambiar parámetros
+            E1 = 0;
+            theta1 = 0;
+        });
+        eccentricityInput1.addEventListener('input', () => {
+            meanAnomaly1 = 0;
+            E1 = 0;
+            theta1 = 0;
+        });
+        speedInput1.addEventListener('input', () => {
+            // La velocidad se ajusta automáticamente en el loop de animación
+        });
+
+        requestAnimationFrame(animateLey1);
+
+        // Ley 2: Áreas Iguales en Tiempos Iguales con Mejor Sombreado
+        const canvas2 = document.getElementById('canvas2');
+        const ctx2 = canvas2.getContext('2d');
+        const semiMajorInput2 = document.getElementById('semiMajor2');
+        const semiMajorValue2 = document.getElementById('semiMajor2Value');
+        const eccentricityInput2 = document.getElementById('eccentricity2');
+        const eccentricityValue2 = document.getElementById('eccentricity2Value');
+        const speedInput2 = document.getElementById('speed2');
+        const speedValue2 = document.getElementById('speed2Value');
+        const areaScaleInput = document.getElementById('areaScale');
+        const areaScaleValue = document.getElementById('areaScaleValue');
+
+        let lastTime2 = null;
+        let meanAnomaly2 = 0;
+        let E2 = 0; // Anomalía excéntrica inicial
+        let theta2 = 0; // Anomalía verdadera inicial
+        let ellipseArea2 = 0;
+        let areaPerSecond2 = 0; // Área barrida por segundo
+
+        // Puntos para demostrar la segunda ley
+        let pointsLey2 = [];
+
+        function drawLey2(deltaTime) {
+            const a = parseFloat(semiMajorInput2.value);
+            const e = parseFloat(eccentricityInput2.value);
+            const speed = parseFloat(speedInput2.value);
+            const areaScale = parseFloat(areaScaleInput.value);
+            semiMajorValue2.textContent = a;
+            eccentricityValue2.textContent = e.toFixed(2);
+            speedValue2.textContent = speed.toFixed(1);
+            areaScaleValue.textContent = areaScale;
+
+            const margin = 50;
+            const scale = calculateScale(a, e, canvas2.width, canvas2.height, margin);
+
+            const scaledA = a * scale;
+            const scaledB = scaledA * Math.sqrt(1 - e * e);
+            const scaledC = scaledA * e;
+
+            const centerX = canvas2.width / 2;
+            const centerY = canvas2.height / 2;
+            const ellipseCenterX = centerX - scaledC; // Ajustar el centro de la elipse
+
+            ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+
+            // Dibujar el sol en el foco
+            ctx2.fillStyle = '#ffeb3b'; // Color amarillo más brillante
+            ctx2.beginPath();
+            ctx2.arc(centerX, centerY, 15, 0, 2 * Math.PI);
+            ctx2.fill();
+
+            // Dibujar la órbita elíptica
+            ctx2.strokeStyle = '#00bcd4'; // Color azul claro
+            ctx2.lineWidth = 2;
+            ctx2.beginPath();
+            ctx2.ellipse(ellipseCenterX, centerY, scaledA, scaledB, 0, 0, 2 * Math.PI);
+            ctx2.stroke();
+
+            // Calcular el área total de la elipse
+            ellipseArea2 = Math.PI * scaledA * scaledB;
+
+            // Calcular el área barrida por segundo
+            areaPerSecond2 = (speed * ellipseArea2) / (2 * Math.PI); // Ajusta speed para controlar la velocidad
+
+            // Incrementar la anomalía media basada en el área barrida
+            const dA = areaPerSecond2 * deltaTime;
+            meanAnomaly2 += dA / ellipseArea2 * 2 * Math.PI; // Convertir área a anomalía media
+            meanAnomaly2 %= 2 * Math.PI;
+
+            // Resolver Kepler para obtener la anomalía excéntrica E
+            E2 = solveKepler(meanAnomaly2, e);
+
+            // Calcular la anomalía verdadera theta
+            theta2 = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E2 / 2), Math.sqrt(1 - e) * Math.cos(E2 / 2));
+
+            // Calcular la posición del planeta
+            const x2 = ellipseCenterX + scaledA * Math.cos(theta2);
+            const y2 = centerY + scaledB * Math.sin(theta2);
+
+            // Sombrear el área barrida en este intervalo de tiempo
+            if (pointsLey2.length > 0) {
+                const prevPoint = pointsLey2[pointsLey2.length - 1];
+                ctx2.fillStyle = `rgba(0, 150, 255, ${Math.min(1, 0.3 * areaScale)})`; // Azul con opacidad ajustada
+                ctx2.beginPath();
+                ctx2.moveTo(centerX, centerY);
+                ctx2.lineTo(prevPoint.x, prevPoint.y);
+                ctx2.lineTo(x2, y2);
+                ctx2.closePath();
+                ctx2.fill();
+            }
+
+            // Dibujar el planeta
+            ctx2.fillStyle = '#03a9f4'; // Color azul
+            ctx2.beginPath();
+            ctx2.arc(x2, y2, 10, 0, 2 * Math.PI);
+            ctx2.fill();
+
+            // Actualizar puntos para áreas
+            pointsLey2.push({x: x2, y: y2});
+            if (pointsLey2.length > 2) {
+                pointsLey2.shift(); // Mantener solo los dos últimos puntos
+            }
+
+            // Dibujar marcadores de P1 y A1
+            // P1 (Perigeo)
+            const perigeeX = ellipseCenterX + scaledA;
+            const perigeeY = centerY;
+            // A1 (Apogeo)
+            const apogeeX = ellipseCenterX - scaledA;
+            const apogeeY = centerY;
+
+            // Dibujar P1
+            ctx2.fillStyle = '#e91e63'; // Rosa
+            ctx2.beginPath();
+            ctx2.arc(perigeeX, perigeeY, 7, 0, 2 * Math.PI);
+            ctx2.fill();
+            ctx2.fillStyle = '#ffffff';
+            ctx2.font = '12px Arial';
+            ctx2.fillText('P1', perigeeX + 10, perigeeY - 10);
+
+            // Dibujar A1
+            ctx2.fillStyle = '#e91e63'; // Rosa
+            ctx2.beginPath();
+            ctx2.arc(apogeeX, apogeeY, 7, 0, 2 * Math.PI);
+            ctx2.fill();
+            ctx2.fillStyle = '#ffffff';
+            ctx2.fillText('A1', apogeeX + 10, apogeeY - 10);
+
+            // Dibujar líneas desde P1 y A1 a la posición actual para ilustrar áreas iguales
+            ctx2.strokeStyle = '#ffffff'; // Blanco
+            ctx2.lineWidth = 1;
+
+            // Área desde P1
+            ctx2.beginPath();
+            ctx2.moveTo(centerX, centerY);
+            ctx2.lineTo(perigeeX, perigeeY);
+            ctx2.lineTo(x2, y2);
+            ctx2.closePath();
+            ctx2.stroke();
+
+            // Área desde A1
+            ctx2.beginPath();
+            ctx2.moveTo(centerX, centerY);
+            ctx2.lineTo(apogeeX, apogeeY);
+            ctx2.lineTo(x2, y2);
+            ctx2.closePath();
+            ctx2.stroke();
+        }
+
+        function animateLey2(timestamp) {
+            if (!lastTime2) lastTime2 = timestamp;
+            const delta = (timestamp - lastTime2) / 1000; // en segundos
+            lastTime2 = timestamp;
+
+            drawLey2(delta);
+            requestAnimationFrame(animateLey2);
+        }
+
+        semiMajorInput2.addEventListener('input', () => {
+            meanAnomaly2 = 0; // Reiniciar la animación al cambiar parámetros
+            E2 = 0;
+            theta2 = 0;
+            pointsLey2 = [];
+        });
+        eccentricityInput2.addEventListener('input', () => {
+            meanAnomaly2 = 0;
+            E2 = 0;
+            theta2 = 0;
+            pointsLey2 = [];
+        });
+        speedInput2.addEventListener('input', () => {
+            // La velocidad se ajusta automáticamente en el loop de animación
+        });
+        areaScaleInput.addEventListener('input', () => {
+            // La escala del área se ajusta automáticamente en el loop de animación
+        });
+
+        requestAnimationFrame(animateLey2);
+
+        // Ley 3: Período Armónico con Gráfica Interactiva
+        const canvas3 = document.getElementById('periodPlot');
+        const ctx3 = canvas3.getContext('2d');
+        const plotPointsInput = document.getElementById('plotPoints');
+        const scaleFactorInput = document.getElementById('scaleFactor');
+        const scaleFactorValue = document.getElementById('scaleFactorValue');
+
+        function drawLey3() {
+            const numPoints = parseInt(plotPointsInput.value);
+            const scaleFactor = parseFloat(scaleFactorInput.value);
+            scaleFactorValue.textContent = scaleFactor.toFixed(1);
+
+            ctx3.clearRect(0, 0, canvas3.width, canvas3.height);
+
+            // Definir márgenes
+            const margin = 60;
+            const width = canvas3.width - 2 * margin;
+            const height = canvas3.height - 2 * margin;
+
+            // Dibujar ejes
+            ctx3.strokeStyle = '#00bcd4'; // Color azul claro para ejes
+            ctx3.lineWidth = 2;
+            ctx3.beginPath();
+            // Eje X
+            ctx3.moveTo(margin, canvas3.height - margin);
+            ctx3.lineTo(canvas3.width - margin, canvas3.height - margin);
+            // Eje Y
+            ctx3.moveTo(margin, canvas3.height - margin);
+            ctx3.lineTo(margin, margin);
+            ctx3.stroke();
+
+            // Etiquetas de ejes
+            ctx3.fillStyle = '#ffffff';
+            ctx3.font = '16px Arial';
+            ctx3.fillText('a³', canvas3.width / 2, canvas3.height - 20);
+            ctx3.save();
+            ctx3.translate(20, canvas3.height / 2);
+            ctx3.rotate(-Math.PI / 2);
+            ctx3.fillText('T²', 0, 0);
+            ctx3.restore();
+
+            // Definir rangos para a y T
+            const aMax = 300;
+            const aCubedMax = Math.pow(aMax, 3);
+            const TMax = Math.sqrt(Math.pow(aMax, 3) / 1000); // Basado en T² = a³ / 1000
+            const TSquaredMax = Math.pow(TMax, 2);
+
+            // Dibujar líneas de referencia (grid)
+            ctx3.strokeStyle = '#444444'; // Color gris oscuro para grid
+            ctx3.lineWidth = 1;
+            ctx3.beginPath();
+            // Líneas horizontales
+            for (let i = 1; i <= 10; i++) {
+                const y = margin + (height / 10) * (10 - i);
+                ctx3.moveTo(margin, y);
+                ctx3.lineTo(canvas3.width - margin, y);
+            }
+            // Líneas verticales
+            for (let i = 1; i <= 10; i++) {
+                const x = margin + (width / 10) * i;
+                ctx3.moveTo(x, margin);
+                ctx3.lineTo(x, canvas3.height - margin);
+            }
+            ctx3.stroke();
+
+            // Dibujar la relación T² = a³ / 1000
+            ctx3.strokeStyle = '#ff5722'; // Color naranja para la línea de datos
+            ctx3.lineWidth = 2;
+            ctx3.beginPath();
+            for (let i = 0; i <= numPoints; i++) {
+                const a = (i / numPoints) * aMax;
+                const aCubed = Math.pow(a, 3);
+                const T = Math.sqrt(aCubed / 1000);
+                const TSquared = Math.pow(T, 2);
+
+                const x = margin + (aCubed / aCubedMax) * width * scaleFactor;
+                const y = canvas3.height - margin - (TSquared / TSquaredMax) * height * scaleFactor;
+
+                if (i === 0) {
+                    ctx3.moveTo(x, y);
+                } else {
+                    ctx3.lineTo(x, y);
+                }
+            }
+            ctx3.stroke();
+
+            // Dibujar puntos
+            for (let i = 1; i <= numPoints; i++) {
+                const a = (i / numPoints) * aMax;
+                const aCubed = Math.pow(a, 3);
+                const T = Math.sqrt(aCubed / 1000);
+                const TSquared = Math.pow(T, 2);
+
+                const x = margin + (aCubed / aCubedMax) * width * scaleFactor;
+                const y = canvas3.height - margin - (TSquared / TSquaredMax) * height * scaleFactor;
+
+                ctx3.fillStyle = '#4caf50'; // Color verde para puntos
+                ctx3.beginPath();
+                ctx3.arc(x, y, 5, 0, 2 * Math.PI);
+                ctx3.fill();
+            }
+
+            // Dibujar línea de referencia T² = a³ / 1000
+            ctx3.strokeStyle = '#00e676'; // Color verde claro para línea de referencia
+            ctx3.lineWidth = 1;
+            ctx3.beginPath();
+            ctx3.moveTo(margin, canvas3.height - margin);
+            ctx3.lineTo(canvas3.width - margin, margin);
+            ctx3.stroke();
+
+            // Dibujar leyenda
+            ctx3.fillStyle = '#ff5722';
+            ctx3.font = '14px Arial';
+            ctx3.fillText('T² = a³ / 1000', canvas3.width - margin - 120, margin + 20);
+            ctx3.fillStyle = '#00e676';
+            ctx3.fillText('Línea de referencia', canvas3.width - margin - 140, margin + 40);
+        }
+
+        plotPointsInput.addEventListener('input', () => {
+            document.getElementById('plotPointsValue').textContent = plotPointsInput.value;
+            drawLey3();
+        });
+        scaleFactorInput.addEventListener('input', () => {
+            document.getElementById('scaleFactorValue').textContent = scaleFactorInput.value;
+            drawLey3();
+        });
+
+        drawLey3();
+    </script>
+</body>
+</html>

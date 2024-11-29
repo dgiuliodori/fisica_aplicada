@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualización de Series de Fourier</title>
+    <style>
+        /* Estilos generales */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        h1 {
+            color: #4a90e2;
+        }
+        /* Contenedor de controles */
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            background-color: #fff;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        /* Estilos para etiquetas y controles */
+        label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        select, input[type="range"], input[type="number"] {
+            margin: 0 10px;
+            padding: 5px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="range"] {
+            width: 150px;
+        }
+        /* Canvas */
+        canvas {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        /* Leyenda */
+        #legend {
+            margin-top: 15px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 16px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 2px;
+            margin-right: 8px;
+        }
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; /* Posicionamiento */
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* Responsive */
+        @media (max-width: 600px) {
+            #controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            input[type="range"] {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Convergencia de la Serie de Fourier</h1>
+    <canvas id="canvas" width="800" height="400"></canvas>
+    <div id="controls">
+        <!-- Selección de función -->
+        <div class="control-group">
+            <label for="functionSelect">Función:</label>
+            <select id="functionSelect">
+                <option value="square">Onda Cuadrada</option>
+                <option value="pulse">Onda de Pulso</option>
+                <option value="sawtooth">Onda de Sierra</option>
+                <option value="invertedSawtooth">Onda de Sierra Invertida</option>
+                <option value="triangle">Onda Triangular</option>
+                <option value="sine">Onda Senoidal</option>
+                <option value="noisySquare">Onda Cuadrada con Ruido</option>
+                <option value="squareLimited">Onda Cuadrada Limitada</option>
+                <!-- Puedes agregar más funciones aquí -->
+            </select>
+        </div>
+        <!-- Número de términos -->
+        <div class="control-group tooltip">
+            <label for="termsRange">Número de términos:</label>
+            <input type="range" id="termsRange" min="1" max="50" step="1" value="1">
+            <span id="termsValue">1</span>
+            <span class="tooltiptext">Aumenta o disminuye el número de términos de la serie de Fourier.</span>
+        </div>
+        <!-- Amplitud -->
+        <div class="control-group tooltip">
+            <label for="amplitudeInput">Amplitud:</label>
+            <input type="number" id="amplitudeInput" min="0.1" max="5" step="0.1" value="1">
+            <span class="tooltiptext">Ajusta la amplitud de la función original.</span>
+        </div>
+        <!-- Frecuencia -->
+        <div class="control-group tooltip">
+            <label for="frequencyInput">Frecuencia:</label>
+            <input type="number" id="frequencyInput" min="1" max="10" step="1" value="1">
+            <span class="tooltiptext">Ajusta la frecuencia de la función original.</span>
+        </div>
+    </div>
+    <div id="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #4a90e2;"></div> Función Original
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #e94a4a;"></div> Serie de Fourier
+        </div>
+    </div>
+
+    <script>
+        // Obtener elementos del DOM
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const termsRange = document.getElementById('termsRange');
+        const termsValue = document.getElementById('termsValue');
+        const functionSelect = document.getElementById('functionSelect');
+        const amplitudeInput = document.getElementById('amplitudeInput');
+        const frequencyInput = document.getElementById('frequencyInput');
+
+        const WIDTH = canvas.width;
+        const HEIGHT = canvas.height;
+
+        // Definición de funciones y sus series de Fourier
+        const functions = {
+            square: {
+                original: function(x, amplitude, frequency) {
+                    return (x % (2 * Math.PI / frequency) < Math.PI / frequency) ? amplitude : -amplitude;
+                },
+                fourier: function(x, terms, amplitude, frequency) {
+                    let sum = 0;
+                    for (let n = 1; n <= terms; n += 2) { // Solo términos impares
+                        sum += (4 * amplitude) / (Math.PI * n) * Math.sin(n * frequency * x);
+                    }
+                    return sum;
+                },
+                description: "Onda Cuadrada"
+            },
+            symmetricSawtooth: {
+                original: function(x, amplitude, frequency) {
+                    // Onda de sierra simétrica
+                    return (2 * amplitude / Math.PI) * (x % (2 * Math.PI / frequency) - Math.PI / frequency);
+                },
+                fourier: function(x, terms, amplitude, frequency) {
+                    let sum = 0;
+                    for (let n = 1; n <= terms; n++) {
+                        sum += ((-2 * amplitude) / (Math.PI * n)) * Math.sin(n * frequency * x);
+                    }
+                    return sum;
+                },
+                description: "Onda de Sierra Simétrica"
+            },
+            squareLimited: {
+                original: function(x, amplitude, frequency) {
+                    return (x % (2 * Math.PI / frequency) < Math.PI / frequency) ? amplitude : -amplitude;
+                },
+                fourier: function(x, terms, amplitude, frequency) {
+                    let sum = 0;
+                    for (let n = 1; n <= terms * 2; n += 2) { // Términos impares
+                        sum += (4 * amplitude) / (Math.PI * n) * Math.sin(n * frequency * x);
+                    }
+                    return sum;
+                },
+                description: "Onda Cuadrada (Armónicos Limitados)"
+            },
+            pulse: {
+                original: function(x, amplitude, frequency) {
+                    // Onda de pulso con ciclo de trabajo 50%
+                    return (x % (2 * Math.PI / frequency) < Math.PI / frequency) ? amplitude : 0;
+                },
+                fourier: function(x, terms, amplitude, frequency) {
+                    let sum = 0;
+                    for (let k = 1; k <= terms; k++) {
+                        let n = 2 * k - 1; // Solo términos impares
+                        sum += (2 * amplitude) / (Math.PI * n) * Math.sin(n * frequency * x);
+                    }
+                    // Añadir el término de desplazamiento (DC offset)
+                    sum += amplitude / 2;
+                    return sum;
+                },
+                description: "Onda de Pulso (Ciclo 50%)"
+            },
+            sawtooth: {
+                original: function(x, amplitude, frequency) {
+                    // Onda de sierra: linealmente aumenta de -amplitud a +amplitud en [0, 2π/frequency)
+                    return (x % (2 * Math.PI / frequency)) / (Math.PI / frequency) * amplitude - amplitude;
+                },
+                fourier: function(x, terms, amplitude, frequency) {
+                    let sum = 0;
+                    for (let n = 1; n <= terms; n++) {
+                        sum += ((-2 * amplitude) / (Math.PI * n)) * Math.sin(n * frequency * x);
+                    }
+                    return sum;
+                },
+                description: "Onda de Sierra"
+            },
+            invertedSawtooth: {
+                original: function(x, amplitude, frequency) {
+                    // Onda de sierra invertida: linealmente disminuye de +amplitud a -amplitud en [0, 2π/frequency)
+                    return -((x % (2 * Math.PI / frequency)) / (Math.PI / frequency) * amplitude - amplitude);
+                },
+                fourier: function(x, terms, amplitude, frequency) {
+                    let sum = 0;
+                    for (let n = 1; n <= terms; n++) {
+                        sum += ((2 * amplitude) / (Math.PI * n)) * Math.sin(n * frequency * x);
+                    }
+                    return sum;
+                },
+                description: "Onda de Sierra Invertida"
+            },
+            triangle: {
+                original: function(x, amplitude, frequency) {
+                    // Onda triangular: |(x % (2π/frequency)) - π/frequency| * (2*amplitude/π) - amplitude
+                    let period = 2 * Math.PI / frequency;
+                    let pos = x % period;
+                    let value = Math.abs(pos - period / 2);
+                    return (2 * amplitude / Math.PI) * value - amplitude;
+                },
+                fourier: function(x, terms, amplitude, frequency) {
+                    let sum = 0;
+                    for (let k = 1; k <= terms; k++) {
+                        let n = 2 * k - 1; // Solo términos impares
+                        let coefficient = (8 * amplitude) / (Math.PI * Math.PI * n * n);
+                        // Eliminar la alternancia de signos
+                        sum += coefficient * Math.cos(n * frequency * x);
+                    }
+                    return sum;
+                },
+                description: "Onda Triangular"
+            },
+            noisySquare: {
+                original: function(x, amplitude, frequency) {
+                    // Onda cuadrada con ruido
+                    let noise = (Math.random() - 0.5) * 0.1 * amplitude; // Ruido aleatorio
+                    return (x % (2 * Math.PI / frequency) < Math.PI / frequency) ? amplitude + noise : -amplitude + noise;
+                },
+                fourier: function(x, terms, amplitude, frequency) {
+                    let sum = 0;
+                    for (let n = 1; n <= terms; n += 2) { // Términos impares
+                        sum += (4 * amplitude) / (Math.PI * n) * Math.sin(n * frequency * x);
+                    }
+                    return sum;
+                },
+                description: "Onda Cuadrada con Ruido"
+            },
+            sine: {
+                original: function(x, amplitude, frequency) {
+                    // Onda senoidal básica
+                    return amplitude * Math.sin(frequency * x);
+                },
+                fourier: function(x, terms, amplitude, frequency) {
+                    // La serie de Fourier de una onda senoidal es ella misma
+                    return amplitude * Math.sin(frequency * x);
+                },
+                description: "Onda Senoidal"
+            }
+            // Puedes agregar más funciones aquí
+        };
+
+        let currentFunction = functions[functionSelect.value];
+
+        // Función para dibujar en el canvas
+        function draw() {
+            ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+            // Obtener parámetros
+            const terms = parseInt(termsRange.value);
+            const amplitude = parseFloat(amplitudeInput.value);
+            const frequency = parseInt(frequencyInput.value);
+            termsValue.textContent = terms;
+
+            // Dibujar la función original
+            ctx.beginPath();
+            ctx.strokeStyle = '#4a90e2';
+            ctx.lineWidth = 2;
+            for (let xPixel = 0; xPixel <= WIDTH; xPixel++) {
+                const x = (xPixel / WIDTH) * (2 * Math.PI);
+                const y = currentFunction.original(x, amplitude, frequency);
+                const yPixel = HEIGHT / 2 - y * (HEIGHT / 2.5); // Aumentar la escala vertical
+                if (xPixel === 0) {
+                    ctx.moveTo(xPixel, yPixel);
+                } else {
+                    ctx.lineTo(xPixel, yPixel);
+                }
+            }
+            ctx.stroke();
+
+            // Dibujar la serie de Fourier
+            ctx.beginPath();
+            ctx.strokeStyle = '#e94a4a';
+            ctx.lineWidth = 2;
+            for (let xPixel = 0; xPixel <= WIDTH; xPixel++) {
+                const x = (xPixel / WIDTH) * (2 * Math.PI);
+                const y = currentFunction.fourier(x, terms, amplitude, frequency);
+                const yPixel = HEIGHT / 2 - y * (HEIGHT / 2.5); // Aumentar la escala vertical
+                if (xPixel === 0) {
+                    ctx.moveTo(xPixel, yPixel);
+                } else {
+                    ctx.lineTo(xPixel, yPixel);
+                }
+            }
+            ctx.stroke();
+        }
+
+        // Eventos para actualizar el dibujo cuando cambian los controles
+        termsRange.addEventListener('input', draw);
+        functionSelect.addEventListener('change', function() {
+            currentFunction = functions[this.value];
+            draw();
+        });
+        amplitudeInput.addEventListener('input', draw);
+        frequencyInput.addEventListener('input', draw);
+
+        // Inicializar los valores y dibujar inicialmente
+        window.onload = function() {
+            draw();
+        };
+    </script>
+</body>
+</html>

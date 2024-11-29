@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Método de Gauss-Jordan</title>
+<style>
+    /* Estilos generales */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f0f2f5;
+        margin: 0;
+        padding: 20px;
+        color: #333;
+    }
+    h1 {
+        text-align: center;
+        color: #007BFF;
+    }
+    #controls {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    #controls label {
+        font-weight: bold;
+    }
+    #controls select {
+        font-size: 16px;
+        padding: 5px;
+        margin: 0 10px;
+    }
+    #solve-btn {
+        background-color: #28a745;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 12px 24px;
+        font-size: 18px;
+        cursor: pointer;
+        margin-top: 20px;
+    }
+    #solve-btn:hover {
+        background-color: #218838;
+    }
+    /* Estilos de la matriz */
+    #matrix-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    #matrix {
+        border-collapse: collapse;
+        background-color: #fff;
+    }
+    #matrix th, #matrix td {
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: center;
+    }
+    #matrix th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+    #matrix td.separator {
+        border: none;
+        background-color: transparent;
+        width: 10px;
+    }
+    #matrix input {
+        width: 60px;
+        text-align: center;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 5px;
+        font-size: 16px;
+    }
+    /* Estilos de los pasos */
+    #steps {
+        max-width: 900px;
+        margin: 0 auto;
+        margin-top: 30px;
+    }
+    #steps h3 {
+        color: #007BFF;
+        border-bottom: 2px solid #007BFF;
+        padding-bottom: 5px;
+    }
+    #steps table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+    }
+    #steps th, #steps td {
+        border: 1px solid #ccc;
+        padding: 12px;
+        text-align: center;
+        font-size: 16px;
+    }
+    #steps th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+    #steps td.separator {
+        border: none;
+        background-color: transparent;
+        width: 10px;
+    }
+    .message {
+        text-align: center;
+        color: red;
+        font-weight: bold;
+        font-size: 18px;
+    }
+    /* Estilos de resaltado */
+    .highlight {
+        background-color: #fff3cd;
+    }
+    .pivot {
+        background-color: #d4edda;
+    }
+    .operation {
+        background-color: #f8d7da;
+    }
+</style>
+</head>
+<body>
+
+<h1>Método de Gauss-Jordan</h1>
+
+<div id="controls">
+    <label for="matrix-size">Tamaño de la matriz:</label>
+    <select id="matrix-size" onchange="generateMatrix()">
+        <option value="2">2x2</option>
+        <option value="3" selected>3x3</option>
+    </select>
+    <label for="operation-type">Operación:</label>
+    <select id="operation-type" onchange="generateMatrix()">
+        <option value="solve" selected>Resolver Sistema</option>
+        <option value="inverse">Calcular Inversa</option>
+    </select>
+</div>
+
+<div id="matrix-container">
+    <!-- La matriz se generará dinámicamente aquí -->
+</div>
+
+<div id="controls">
+    <button id="solve-btn" onclick="solve()">Ejecutar Gauss-Jordan</button>
+</div>
+
+<div id="steps"></div>
+
+<script>
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function generateMatrix() {
+    const matrixContainer = document.getElementById('matrix-container');
+    const size = parseInt(document.getElementById('matrix-size').value);
+    const operation = document.getElementById('operation-type').value;
+    let tableHTML = '<table id="matrix">';
+    // Encabezados de columnas
+    tableHTML += '<tr><th></th>';
+    for (let j = 0; j < size; j++) {
+        tableHTML += `<th>A<sub>${j + 1}</sub></th>`;
+    }
+    tableHTML += '<th class="separator"></th>';
+    if (operation === 'solve') {
+        tableHTML += '<th>B</th>';
+    } else if (operation === 'inverse') {
+        for (let j = 0; j < size; j++) {
+            tableHTML += `<th>I<sub>${j + 1}</sub></th>`;
+        }
+    }
+    tableHTML += '</tr>';
+    // Filas de la matriz
+    for (let i = 0; i < size; i++) {
+        tableHTML += `<tr><th>Fila ${i + 1}</th>`;
+        for (let j = 0; j < size; j++) {
+            tableHTML += `<td><input type="number" id="a${i}${j}" value="${Math.floor(Math.random() * 5) + 1}"></td>`;
+        }
+        tableHTML += '<td class="separator"></td>';
+        if (operation === 'solve') {
+            tableHTML += `<td><input type="number" id="b${i}" value="${Math.floor(Math.random() * 10) + 1}"></td>`;
+        } else if (operation === 'inverse') {
+            for (let j = 0; j < size; j++) {
+                let value = (i === j) ? 1 : 0;
+                tableHTML += `<td><input type="number" id="i${i}${j}" value="${value}" disabled></td>`;
+            }
+        }
+        tableHTML += '</tr>';
+    }
+    tableHTML += '</table>';
+    matrixContainer.innerHTML = tableHTML;
+}
+
+// Generar la matriz inicial al cargar la página
+window.onload = generateMatrix;
+
+async function solve() {
+    const stepsDiv = document.getElementById('steps');
+    stepsDiv.innerHTML = '';
+
+    const size = parseInt(document.getElementById('matrix-size').value);
+    const operation = document.getElementById('operation-type').value;
+
+    // Obtener valores de la matriz
+    let A = [];
+    for (let i = 0; i < size; i++) {
+        let row = [];
+        for (let j = 0; j < size; j++) {
+            row.push(parseFloat(document.getElementById(`a${i}${j}`).value));
+        }
+        if (operation === 'solve') {
+            row.push(parseFloat(document.getElementById(`b${i}`).value)); // Término independiente
+        } else if (operation === 'inverse') {
+            // Añadir la matriz identidad
+            for (let j = 0; j < size; j++) {
+                row.push((i === j) ? 1 : 0);
+            }
+        }
+        A.push(row);
+    }
+
+    // Mostrar matriz inicial
+    await showStep(A, 'Matriz inicial');
+
+    // Aplicar el método de Gauss-Jordan
+    const n = size;
+    const totalCols = A[0].length;
+    for (let i = 0; i < n; i++) {
+        // Hacer el elemento A[i][i] igual a 1
+        let factor = A[i][i];
+        if (factor === 0) {
+            // Intercambiar con una fila abajo que no tenga cero en esta posición
+            for (let k = i + 1; k < n; k++) {
+                if (A[k][i] !== 0) {
+                    [A[i], A[k]] = [A[k], A[i]];
+                    await showStep(A, `Intercambiar fila ${i + 1} con fila ${k + 1}`);
+                    factor = A[i][i];
+                    break;
+                }
+            }
+            if (A[i][i] === 0) {
+                stepsDiv.innerHTML += '<p class="message">No se puede resolver: pivote cero encontrado.</p>';
+                return;
+            }
+        }
+        if (factor !== 1) {
+            for (let j = 0; j < totalCols; j++) {
+                A[i][j] = A[i][j] / factor;
+            }
+            await showStep(A, `Dividir fila ${i + 1} entre ${factor.toFixed(2)}`, [{row: i, cols: [...Array(totalCols).keys()], className: 'pivot'}]);
+        } else {
+            await showStep(A, `El pivote en la fila ${i + 1} ya es 1, no es necesario dividir`, [{row: i, col: i, className: 'pivot'}]);
+        }
+
+        // Hacer ceros en la columna i para todas las filas excepto la fila i
+        for (let k = 0; k < n; k++) {
+            if (k !== i) {
+                let factor2 = A[k][i];
+                if (factor2 !== 0) {
+                    for (let j = 0; j < totalCols; j++) {
+                        A[k][j] = A[k][j] - factor2 * A[i][j];
+                    }
+                    await showStep(A, `Restar ${factor2.toFixed(2)} veces la fila ${i + 1} a la fila ${k + 1}`, [
+                        {row: k, cols: [...Array(totalCols).keys()], className: 'operation'},
+                        {row: i, cols: [...Array(totalCols).keys()], className: 'pivot'}
+                    ]);
+                } else {
+                    await showStep(A, `El elemento en fila ${k + 1}, columna ${i + 1} ya es 0, no es necesario restar`);
+                }
+            }
+        }
+    }
+
+    // Mostrar solución
+    if (operation === 'solve') {
+        let solution = '';
+        for (let i = 0; i < n; i++) {
+            solution += `x<sub>${i + 1}</sub> = ${A[i][n].toFixed(2)}<br>`;
+        }
+        stepsDiv.innerHTML += `<h3>Solución:</h3><p>${solution}</p>`;
+    } else if (operation === 'inverse') {
+        let inverseMatrix = [];
+        for (let i = 0; i < n; i++) {
+            inverseMatrix.push(A[i].slice(n));
+        }
+        stepsDiv.innerHTML += `<h3>Matriz Inversa:</h3>`;
+        await showInverse(inverseMatrix);
+    }
+}
+
+async function showStep(matrix, description, highlights = []) {
+    const stepsDiv = document.getElementById('steps');
+    stepsDiv.innerHTML += `<h3>${description}</h3>`;
+    let tableHTML = '<table>';
+    const operation = document.getElementById('operation-type').value;
+    const n = matrix.length;
+    const totalCols = matrix[0].length;
+    // Encabezados de columnas
+    tableHTML += '<tr><th></th>';
+    for (let j = 0; j < n; j++) {
+        tableHTML += `<th>${j + 1}</th>`;
+    }
+    tableHTML += '<th class="separator"></th>';
+    for (let j = n; j < totalCols; j++) {
+        tableHTML += `<th>${j + 1}</th>`;
+    }
+    tableHTML += '</tr>';
+    // Filas de la matriz
+    for (let i = 0; i < n; i++) {
+        tableHTML += `<tr><th>${i + 1}</th>`;
+        for (let j = 0; j < totalCols; j++) {
+            // Añadimos el separador en la posición correcta
+            if (j === n) {
+                tableHTML += '<td class="separator"></td>';
+            }
+            let className = '';
+            // Verificar si la celda debe ser resaltada
+            highlights.forEach(highlight => {
+                if (highlight.row === i && (highlight.col === j || (highlight.cols && highlight.cols.includes(j)))) {
+                    className = highlight.className;
+                }
+            });
+            tableHTML += `<td class="${className}">${matrix[i][j].toFixed(2)}</td>`;
+        }
+        tableHTML += '</tr>';
+    }
+    tableHTML += '</table>';
+    stepsDiv.innerHTML += tableHTML;
+    await sleep(800); // Pausa de 0.8 segundos para la animación
+}
+
+async function showInverse(matrix) {
+    let tableHTML = '<table>';
+    const n = matrix.length;
+    // Encabezados de columnas
+    tableHTML += '<tr><th></th>';
+    for (let j = 0; j < n; j++) {
+        tableHTML += `<th>${j + 1}</th>`;
+    }
+    tableHTML += '</tr>';
+    // Filas de la matriz inversa
+    for (let i = 0; i < n; i++) {
+        tableHTML += `<tr><th>${i + 1}</th>`;
+        for (let j = 0; j < n; j++) {
+            tableHTML += `<td>${matrix[i][j].toFixed(2)}</td>`;
+        }
+        tableHTML += '</tr>';
+    }
+    tableHTML += '</table>';
+    const stepsDiv = document.getElementById('steps');
+    stepsDiv.innerHTML += tableHTML;
+}
+</script>
+
+</body>
+</html>

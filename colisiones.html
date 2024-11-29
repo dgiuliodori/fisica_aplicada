@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Aplicada</title>
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <!-- Incluir Plotly.js -->
+    <script src="js_lib/plotly-latest.min.js"></script>
+    <!-- Incluir math.js -->
+    <script src="js_lib/math.min.js"></script>
+    <script src="js/menuData.js"></script>
+    <script src="js/generarMenu.js"></script>
+    <script id="MathJax-script" async
+            src="js_lib//tex-mml-chtml.js">
+    </script>
+    <style>
+        /* Reset de estilos básicos */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Estilos del cuerpo */
+        /* body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+
+        h1 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+
+        .controls {
+            background-color: #ffffff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+
+        .controls label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .controls input, .controls select, .controls button {
+            width: 100%;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border: 1px solid #ccd1d9;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .controls button {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .controls button:hover {
+            background-color: #2980b9;
+        } */
+
+        /* Canvas de la simulación */
+        #simulationCanvas {
+            background-color: #ecf0f1;
+            border: 2px solid #bdc3c7;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Contenedor de resultados */
+        .results {
+            background-color: #ffffff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        /* Estilos de la tabla de resultados */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        table, th, td {
+            border: 1px solid #bdc3c7;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #3498db;
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        /* Contenedor de ecuaciones */
+        .equations {
+            background-color: #ffffff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            width: 100%;
+            max-width: 800px;
+            text-align: left;
+        }
+
+        .equations h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        /* Responsividad */
+        @media (max-width: 600px) {
+            .controls, .results, .equations {
+                padding: 15px 20px;
+            }
+
+            th, td {
+                padding: 10px 12px;
+            }
+
+            .controls input, .controls select, .controls button {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Colisiones Elásticas e Inelásticas</h1>
+    </header>
+    <nav>
+        <!-- Navegación opcional -->
+    </nav>
+    <div class="parametros">
+        <aside id="sidebar">
+            <h2>Parámetros</h2>
+    
+        <div class="slider-container">
+            <label for="mass1">Masa del Objeto 1 (kg):</label>
+            <input id="mass1" type="number" value="2" step="0.1" min="0.1">
+        </div>
+        <div class="slider-container">
+            <label for="vel1">Velocidad del Objeto 1 (m/s):</label>
+            <input id="vel1" type="number" value="5" step="0.1">
+        </div>
+        <div class="slider-container">
+            <label for="mass2">Masa del Objeto 2 (kg):</label>
+            <input id="mass2" type="number" value="3" step="0.1" min="0.1">
+        </div>
+        <div class="slider-container">
+            <label for="vel2">Velocidad del Objeto 2 (m/s):</label>
+            <input id="vel2" type="number" value="-3" step="0.1">
+        </div>
+        <div class="slider-container">
+            <label for="collisionType">Tipo de Colisión:</label>
+            <select id="collisionType">
+                <option value="elastic">Elástica</option>
+                <option value="inelastic">Inelástica</option>
+            </select>
+        </div>
+        <div class="slider-container">
+            <button onclick="startSimulation()">Simular</button>
+        </div>
+    </aside>
+</div>
+<main id="content"> 
+    <canvas id="simulationCanvas" width="800" height="250"></canvas>
+
+    <div class="results">
+        <h3>Resultados</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Masa 1 (kg)</th>
+                    <th>Velocidad 1 (m/s)</th>
+                    <th>Masa 2 (kg)</th>
+                    <th>Velocidad 2 (m/s)</th>
+                    <th>Cantidad de Movimiento Total (kg·m/s)</th>
+                    <th>Energía Cinética Total (J)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr id="before">
+                    <td>Antes de la colisión</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr id="after">
+                    <td>Después de la colisión</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="equations">
+        <h3>Ecuaciones Utilizadas</h3>
+        <div id="equationsContent">
+            <!-- Las ecuaciones se insertarán aquí -->
+        </div>
+    </div>
+</main>
+<br>
+<footer>
+    &copy; 2024 Física Aplicada - dgiuliodori@unc.edu.ar 
+</footer>
+    <script>
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let obj1, obj2, animationFrame;
+
+        function startSimulation() {
+            const mass1 = parseFloat(document.getElementById('mass1').value);
+            const vel1 = parseFloat(document.getElementById('vel1').value);
+            const mass2 = parseFloat(document.getElementById('mass2').value);
+            const vel2 = parseFloat(document.getElementById('vel2').value);
+            const collisionType = document.getElementById('collisionType').value;
+
+            // Validaciones básicas
+            if (mass1 <= 0 || mass2 <= 0) {
+                alert("Las masas deben ser valores positivos.");
+                return;
+            }
+
+            // Resetear objetos
+            obj1 = { 
+                x: 100, 
+                y: canvas.height / 2, 
+                radius: 20, 
+                mass: mass1, 
+                velocity: vel1, 
+                color: '#e74c3c',
+                trail: []
+            };
+            obj2 = { 
+                x: 700, 
+                y: canvas.height / 2, 
+                radius: 20, 
+                mass: mass2, 
+                velocity: vel2, 
+                color: '#2980b9',
+                trail: []
+            };
+
+            calculateResults(mass1, vel1, mass2, vel2, collisionType);
+
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            simulate(collisionType);
+        }
+
+        function calculateResults(mass1, vel1, mass2, vel2, collisionType) {
+            // Cantidad de movimiento
+            const momentumBefore = mass1 * vel1 + mass2 * vel2;
+
+            // Energía cinética antes de la colisión
+            const keBefore = 0.5 * mass1 * vel1 * vel1 + 0.5 * mass2 * vel2 * vel2;
+
+            let v1Final, v2Final, totalMass, momentumAfter, keAfter, equationsHTML;
+
+            if (collisionType === 'elastic') {
+                // Fórmulas para colisión elástica
+                v1Final = ((mass1 - mass2) / (mass1 + mass2)) * vel1 +
+                          ((2 * mass2) / (mass1 + mass2)) * vel2;
+                v2Final = ((mass2 - mass1) / (mass1 + mass2)) * vel2 +
+                          ((2 * mass1) / (mass1 + mass2)) * vel1;
+                momentumAfter = mass1 * v1Final + mass2 * v2Final;
+
+                // Energía cinética después de la colisión
+                keAfter = 0.5 * mass1 * v1Final * v1Final + 0.5 * mass2 * v2Final * v2Final;
+
+                // Ecuaciones en LaTeX
+                equationsHTML = `
+                    <p><strong>Conservación del Momento Lineal:</strong></p>
+                    <p>$$m_1 v_{1i} + m_2 v_{2i} = m_1 v_{1f} + m_2 v_{2f}$$</p>
+                    <p><strong>Conservación de la Energía Cinética:</strong></p>
+                    <p>$$\\frac{1}{2} m_1 v_{1i}^2 + \\frac{1}{2} m_2 v_{2i}^2 = \\frac{1}{2} m_1 v_{1f}^2 + \\frac{1}{2} m_2 v_{2f}^2$$</p>
+                    <p><strong>Fórmulas para colisión elástica:</strong></p>
+                    <p>$$v_{1f} = \\frac{m_1 - m_2}{m_1 + m_2} v_{1i} + \\frac{2 m_2}{m_1 + m_2} v_{2i}$$</p>
+                    <p>$$v_{2f} = \\frac{m_2 - m_1}{m_1 + m_2} v_{2i} + \\frac{2 m_1}{m_1 + m_2} v_{1i}$$</p>
+                `;
+            } else {
+                // Fórmulas para colisión inelástica
+                totalMass = mass1 + mass2;
+                const combinedVelocity = (mass1 * vel1 + mass2 * vel2) / totalMass;
+                v1Final = combinedVelocity;
+                v2Final = combinedVelocity;
+                momentumAfter = totalMass * combinedVelocity;
+
+                // Energía cinética después de la colisión
+                keAfter = 0.5 * totalMass * combinedVelocity * combinedVelocity;
+
+                // Ecuaciones en LaTeX
+                equationsHTML = `
+                    <p><strong>Conservación del Momento Lineal:</strong></p>
+                    <p>$$m_1 v_{1i} + m_2 v_{2i} = (m_1 + m_2) v_f$$</p>
+                    <p><strong>Pérdida de Energía Cinética:</strong></p>
+                    <p>$$\\Delta  = (\\frac{1}{2} m_1 v_{1i}^2 + \\frac{1}{2} m_2 v_{2i}^2)_{\\text{antes}} -  (\\frac{1}{2} (m_1 +  m_2) v_{f}^2)_{\\text{después}} $$</p>
+                    <p><strong>Fórmula para colisión inelástica:</strong></p>
+                    <p>$$v_f = \\frac{m_1 v_{1i} + m_2 v_{2i}}{m_1 + m_2}$$</p>
+                `;
+            }
+
+            // Actualizar la tabla de resultados
+            document.getElementById('before').innerHTML = `
+                <td>Antes de la colisión</td>
+                <td>${mass1.toFixed(2)}</td>
+                <td>${vel1.toFixed(2)}</td>
+                <td>${mass2.toFixed(2)}</td>
+                <td>${vel2.toFixed(2)}</td>
+                <td>${momentumBefore.toFixed(2)}</td>
+                <td>${keBefore.toFixed(2)}</td>
+            `;
+            document.getElementById('after').innerHTML = `
+                <td>Después de la colisión</td>
+                <td>${collisionType === 'inelastic' ? (mass1 + mass2).toFixed(2) : mass1.toFixed(2)}</td>
+                <td>${v1Final.toFixed(2)}</td>
+                <td>${collisionType === 'inelastic' ? '---' : mass2.toFixed(2)}</td>
+                <td>${collisionType === 'inelastic' ? '---' : v2Final.toFixed(2)}</td>
+                <td>${momentumAfter.toFixed(2)}</td>
+                <td>${keAfter.toFixed(2)}</td>
+            `;
+
+            // Actualizar las ecuaciones
+            document.getElementById('equationsContent').innerHTML = equationsHTML;
+
+            // Actualizar MathJax
+            if (typeof MathJax !== 'undefined') {
+                MathJax.typesetPromise();
+            }
+        }
+
+        function simulate(collisionType) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar fondo decorativo
+            drawBackground();
+
+            // Actualizar posiciones y guardar trail
+            updatePosition(obj1);
+            updatePosition(obj2);
+
+            // Verificar colisión
+            if (Math.abs(obj1.x - obj2.x) <= obj1.radius + obj2.radius) {
+                if (collisionType === 'elastic') {
+                    // Colisión elástica: calcular velocidades finales
+                    const v1Final = ((obj1.mass - obj2.mass) / (obj1.mass + obj2.mass)) * obj1.velocity +
+                                    ((2 * obj2.mass) / (obj1.mass + obj2.mass)) * obj2.velocity;
+                    const v2Final = ((obj2.mass - obj1.mass) / (obj1.mass + obj2.mass)) * obj2.velocity +
+                                    ((2 * obj1.mass) / (obj1.mass + obj2.mass)) * obj1.velocity;
+
+                    obj1.velocity = v1Final;
+                    obj2.velocity = v2Final;
+                } else if (collisionType === 'inelastic') {
+                    // Colisión inelástica: combinar velocidades
+                    const totalMass = obj1.mass + obj2.mass;
+                    const combinedVelocity = (obj1.mass * obj1.velocity + obj2.mass * obj2.velocity) / totalMass;
+
+                    obj1.velocity = combinedVelocity;
+                    obj2.velocity = combinedVelocity;
+                }
+            }
+
+            // Dibujar objetos con trail
+            drawObjectWithTrail(obj1);
+            drawObjectWithTrail(obj2);
+
+            // Detener simulación si los objetos salen del canvas
+            if (obj1.x - obj1.radius > canvas.width || obj2.x + obj2.radius < 0) {
+                cancelAnimationFrame(animationFrame);
+                return;
+            }
+
+            animationFrame = requestAnimationFrame(() => simulate(collisionType));
+        }
+
+        function drawBackground() {
+            // Dibujar líneas de referencia
+            ctx.strokeStyle = '#95a5a6';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 15]);
+
+            // Línea central
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.setLineDash([]);
+        }
+
+        function updatePosition(obj) {
+            // Actualizar posición
+            obj.x += obj.velocity;
+
+            // Guardar posición para el trail
+            obj.trail.push({x: obj.x, y: obj.y});
+            if (obj.trail.length > 20) {
+                obj.trail.shift();
+            }
+        }
+
+        function drawObjectWithTrail(obj) {
+            // Dibujar trail
+            ctx.beginPath();
+            ctx.moveTo(obj.trail[0]?.x || obj.x, obj.trail[0]?.y || obj.y);
+            for (let point of obj.trail) {
+                ctx.lineTo(point.x, point.y);
+            }
+            ctx.strokeStyle = obj.color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.closePath();
+
+            // Dibujar objeto
+            ctx.beginPath();
+            ctx.arc(obj.x, obj.y, obj.radius, 0, Math.PI * 2);
+            ctx.fillStyle = obj.color;
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.closePath();
+
+            // Dibujar flecha de velocidad
+            drawVelocityArrow(obj);
+        }
+
+        function drawVelocityArrow(obj) {
+            const arrowLength = Math.abs(obj.velocity) * 10; // Escalar para visibilidad
+            const direction = obj.velocity >= 0 ? 1 : -1;
+
+            ctx.beginPath();
+            ctx.moveTo(obj.x, obj.y - obj.radius - 10);
+            ctx.lineTo(obj.x + direction * arrowLength, obj.y - obj.radius - 10);
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Dibujar cabeza de la flecha
+            ctx.beginPath();
+            ctx.moveTo(obj.x + direction * arrowLength, obj.y - obj.radius - 10);
+            ctx.lineTo(obj.x + direction * (arrowLength - 10), obj.y - obj.radius - 15);
+            ctx.lineTo(obj.x + direction * (arrowLength - 10), obj.y - obj.radius - 5);
+            ctx.closePath();
+            ctx.fillStyle = '#2c3e50';
+            ctx.fill();
+        }
+
+        function drawObject(obj) {
+            ctx.beginPath();
+            ctx.arc(obj.x, obj.y, obj.radius, 0, Math.PI * 2);
+            ctx.fillStyle = obj.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+    </script>
+</body>
+</html>
