@@ -1,6 +1,6 @@
 // menuData.js
 const menuData = [
-    // { nombre: "Inicio", enlace: "index.html" },
+    { nombre: "Inicio", enlace: "index.html" },
     {
         nombre: "Cinemática y Dinámica",
         subMenu: [
